@@ -1,0 +1,24 @@
+# History files
+.Rhistory
+
+# Session Data files
+.RData
+
+# User-specific files
+.Ruserdata
+
+# RStudio files
+.Rproj.user/
+
+# R Environment Variables
+.Renviron
+
+# Data
+_targets/
+
+# Ignore data file types
+**.feather
+**.rds
+
+# Other
+**.DS_Store
