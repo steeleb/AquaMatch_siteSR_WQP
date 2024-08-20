@@ -195,4 +195,5 @@ config_targets <- list(
 )
 
 # Full targets list
-c(config_targets)
+c(config_targets,
+  p4_compile_sites)
