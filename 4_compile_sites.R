@@ -5,6 +5,23 @@ tar_source(files = "4_compile_sites/src/")
 
 p4_compile_sites <- list(
   
+  # make directories if needed
+  tar_target(
+    name = p4_check_dir_structure,
+    command = {
+      directories = c("4_compile_sites/in/",
+                      "4_compile_sites/mid/")
+      
+      walk(directories, function(dir) {
+        if(!dir.exists(dir)){
+          dir.create(dir)
+        }
+      })
+    },
+    cue = tar_cue("always"),
+    priority = 1
+  ),
+  
   # Get unique sites from parameter files -------------------------------------
   
   # Join all and pull distinct rows
@@ -25,7 +42,7 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf")
   ),
   
-  # Associcate location with NHD waterbody or flowline ------------------------
+  # Associate location with NHD waterbody and flowline ------------------------
 
   # Nearly all sites have a HUC8 reported in the `HUCEightDigitCode` field, but
   # a few need it assigned
@@ -42,20 +59,36 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf", "nhdplusTools")
   ),
   
+  # todo: might consider whether or not it's faster to do this by HUC4 instead
+  # of HUC8
+  
   # Create the unique HUCs to map over
   tar_target(
     name = p4_HUC8_list,
     command = unique(p4_add_HUC8$HUCEightDigitCode)
   ),
 
-  # Get the waterbodys and flowlines assocated with each site by HUC8
+  # Get the waterbodies associated with each site by HUC8
   tar_target(
-    name = p4_add_NHD_info,
-    command = add_NHD_to_sites(sites_with_huc = p4_add_HUC8,
-                               huc8 = p4_HUC8_list),
+    name = p4_add_NHD_waterbody_info,
+    command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
+                                         huc8 = p4_HUC8_list),
     pattern = p4_HUC8_list,
-    packages = c("tidyverse", "sf", "nhdplusTools")
-  )
+    packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
+  )#,
+
+  # # Calculate the closest flowline to each site by HUC8
+  # tar_target(
+  #   name = p4_add_NHD_flowline_info,
+  #   command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
+  #                                       huc8 = p4_HUC8_list),
+  #   pattern = p4_HUC8_list,
+  #   packages = c("tidyverse", "sf", "nhdplusTools")
+  # )
+  
+  # Will need to address HUCs that are not in NHDPlusV2 here ...
+  
+  # And also join the waterbody and flowline info ...
   
 )
 
