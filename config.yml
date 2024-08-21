@@ -7,7 +7,7 @@ default:
   # The local directory where the harmonize {targets} pipeline is located (i.e.,
   # the pipeline that runs the download step)
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd" # any combination of harmonized data separated by ","
+  parameters: "chla,sdd" # any combination of harmonized parameters in lowercase separated by ","
   chla_use_stable: FALSE
   sdd_use_stable: FALSE
   drive_project_folder: "~/aquamatch_siteSR_wqp/"
@@ -16,7 +16,7 @@ default:
 use_stable:
   google_email: ""
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd" # any combination of harmonized data separated by ","
+  parameters: "chla,sdd" # any combination of harmonized parameters in lowercase separated by ","
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   sdd_use_stable: TRUE
@@ -26,7 +26,7 @@ use_stable:
 admin_update:
   google_email: "therossyndicate@gmail.com"
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd" # any combination of harmonized data separated by ","
+  parameters: "chla,sdd" # any combination of harmonized parameters in lowercase separated by ","
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   sdd_use_stable: TRUE
