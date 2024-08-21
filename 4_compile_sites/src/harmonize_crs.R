@@ -33,9 +33,9 @@ harmonize_crs <- function(sites) {
     "OLDHI", 4135,
     # Assume WGS84
     "OTHER", 4326,
-    # # Puerto Rico Datum
-    # "PR", 4139,
-    # # St. George Island Datum
+    # Puerto Rico Datum
+    "PR", 4139,
+    # St. George Island Datum
     "SGEOR", 4138,
     # St. Lawrence Island Datum
     "SLAWR", 4136,
