@@ -76,16 +76,16 @@ p4_compile_sites <- list(
                                          huc8 = p4_HUC8_list),
     pattern = p4_HUC8_list,
     packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
-  )#,
+  ),
 
-  # # Calculate the closest flowline to each site by HUC8
-  # tar_target(
-  #   name = p4_add_NHD_flowline_info,
-  #   command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
-  #                                       huc8 = p4_HUC8_list),
-  #   pattern = p4_HUC8_list,
-  #   packages = c("tidyverse", "sf", "nhdplusTools")
-  # )
+  # Calculate the closest flowline to each site by HUC8
+  tar_target(
+    name = p4_add_NHD_flowline_info,
+    command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
+                                        huc8 = p4_HUC8_list),
+    pattern = p4_HUC8_list,
+    packages = c("tidyverse", "sf", "arcgis")
+  )
   
   # Will need to address HUCs that are not in NHDPlusV2 here ...
   

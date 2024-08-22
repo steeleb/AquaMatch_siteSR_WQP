@@ -7,8 +7,9 @@
 #' @param sites_with_huc simple feature object of sites to pair with waterbodies
 #' @param huc8 8-digit character string to filter sites by
 #' 
-#' @returns simple feature object of sites with additional fields from the NHDPlusV2.
-#' Silently returns text files with huc8s that failed this function
+#' @returns a dataframe of the simple feature object of sites with additional 
+#' fields from the NHDPlusV2.Silently returns text files with huc8s that failed 
+#' this function
 #' 
 #' 
 add_NHD_waterbody_to_sites <- function(sites_with_huc, huc8) {
@@ -67,12 +68,13 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc8) {
           summarize(n_wbd_100m = n()) 
         
         # add that info to the sf object
-        sf_with_wbd <- left_join(sf_with_wbd, sf_buffer_wbd) %>% 
+        df_with_wbd <- left_join(sf_with_wbd, sf_buffer_wbd) %>% 
           mutate(n_wbd_100m = if_else(is.na(n_wbd_100m), 0, n_wbd_100m)) %>% 
-          select(-rowid)
+          select(-rowid) %>% 
+          st_drop_geometry()
         
         # return the sf with NHD info
-        return(sf_with_wbd)
+        return(df_with_wbd)
       } else {
         # if no waterbodies, note the huc8 in a text file
         message(paste0("HUC8 ", huc8, " contains no waterbodies, noting in '4_compile_sites/mid/no_wbd_huc8.txt'"))

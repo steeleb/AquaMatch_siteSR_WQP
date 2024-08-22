@@ -15,7 +15,7 @@
 #' 
 add_HUC8_to_sites <- function(sites_without_HUC) {
   # for each site, get the HUC8 associated with it and assign that value to the
-  # upstream dataset
+  # upstream dataset - for error handling, this is completed in a for-loop
   for (r in 1:nrow(sites_without_HUC)) {
     # wrap in try for sites that are unassociated with NHD HUC8 extent
     try(one_huc <- get_huc(sites_without_HUC[r, ], type = "huc08"))
