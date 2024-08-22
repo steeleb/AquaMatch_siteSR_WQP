@@ -6,7 +6,7 @@ library(tarchetypes)
 
 # Set target options:
 tar_option_set(
-  packages = "tidyverse",
+  packages = c("tidyverse","sf"),
   memory = "transient",
   garbage_collection = TRUE
 )
