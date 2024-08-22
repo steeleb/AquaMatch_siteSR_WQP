@@ -28,6 +28,7 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_distinct_sites,
     command = {
+      # combine across all site infos, but only retain distinct rows. 
       reduce(.x = list(p3_chla_harmonized_site_info, 
                             p3_sdd_harmonized_site_info),
                      .f = bind_rows) %>% 
@@ -65,7 +66,7 @@ p4_compile_sites <- list(
   # Create the unique HUCs to map over
   tar_target(
     name = p4_HUC8_list,
-    command = unique(p4_add_HUC8$HUCEightDigitCode)
+    command = unique(na.omit(p4_add_HUC8$HUCEightDigitCode))
   ),
 
   # Get the waterbodies associated with each site by HUC8
