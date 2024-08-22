@@ -1,3 +1,16 @@
+#' @title Add NHD waterbody identifier to sites
+#' 
+#' @description
+#' Using {nhdplusTools}, assign a comid to each site to associate them with 
+#' a specific waterbody
+#' 
+#' @param sites_with_huc simple feature object of sites to pair with waterbodies
+#' @param huc8 8-digit character string to filter sites by
+#' 
+#' @returns simple feature object of sites with additional fields from the NHDPlusV2.
+#' Silently returns text files with huc8s that failed this function
+#' 
+#' 
 add_NHD_waterbody_to_sites <- function(sites_with_huc, huc8) {
   message(paste0("Assigning NHD waterbodies to sites within ", huc8))
   # make sure that the huc 8 is within CONUS (to use NHDPlusV2)
