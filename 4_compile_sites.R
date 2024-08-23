@@ -90,7 +90,7 @@ p4_compile_sites <- list(
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
                                         huc4 = p4_HUC4_list) %>% 
       bind_rows(),
-    pattern = p4_HUC8_list,
+    pattern = p4_HUC4_list,
     packages = c("tidyverse", "sf", "arcgis")
   ),
   
