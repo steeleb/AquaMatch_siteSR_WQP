@@ -57,7 +57,7 @@ p4_compile_sites <- list(
         filter(is.na(HUCEightDigitCode)) %>% 
         mutate(flag_HUC8 = 1)
       assigned_HUC8 <- add_HUC8_to_sites(sites_without_HUC = need_HUC8) %>% 
-        mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode, 2, flag_HUC8)))
+        mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       p4_harmonized_sites %>%
         filter(!is.na(HUCEightDigitCode)) %>%
         mutate(flag_HUC8 = 0)

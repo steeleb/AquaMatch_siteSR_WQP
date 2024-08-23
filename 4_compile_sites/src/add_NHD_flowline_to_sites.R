@@ -75,7 +75,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc8) {
     }
   },
   
-  error = funciton(e) {
+  error = function(e) {
     # if subset failed, note and go to next 
     message(paste0("HUC8 ", huc8, " is not within the extent of the NHDPlusHR, 
                      noting in '4_compile_sites/mid/out_extent_flow_huc8.txt'"))
