@@ -166,7 +166,7 @@ config_targets <- list(
                       local_folder = "4_compile_sites/in",
                       stable = p0_siteSR_config$chla_use_stable,
                       google_email = p0_siteSR_config$google_email,
-                      stable_date = p0_siteSR_config$chla_stable_date)
+                      stable_date = p0_siteSR_config$chla_stable_date) 
       } else {
         NULL
       }

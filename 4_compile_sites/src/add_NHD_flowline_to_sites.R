@@ -31,43 +31,62 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc8) {
   # use the bounding box of the sites to query the flowlines
   bbox = st_bbox(sf_subset) %>% 
     st_as_sfc()
-  flowlines_subset <- arc_select(flowlines,
-                                 filter_geom = bbox) 
   
-  # make sure that the huc 8 contains flowlines
-  if (nrow(flowlines_subset) > 0) {
-    # transform the points to the same crs as the flowlines
-    sf_subset <- st_transform(sf_subset, crs = st_crs(flowlines_subset))
-    # get the rowid of the closest flowline
-    sf_subset$closest_flow_rowid <- st_nearest_feature(sf_subset, flowlines_subset)
-    df_subset_with_flow <- sf_subset %>% 
-      rowid_to_column() %>% 
-      split(f = .$rowid) %>% 
-      map(.x = .,
-          .f = ~{
-            .x$dist_to_flow <- st_distance(.x, flowlines_subset[.x$closest_flow_rowid, ])
-            .x$flow_perm_id <- flowlines_subset$permanent_identifier[.x$closest_flow_rowid]
-            .x
-          }) %>% 
-      bind_rows() %>% 
-      select(-c(closest_flow_rowid, rowid)) %>% 
-      st_drop_geometry()
-    return(df_subset_with_flow)
+  tryCatch({
+    flowlines_subset <- arc_select(flowlines,
+                                   filter_geom = bbox) 
     
-  } else { # if there are no flowlines in the extent
-    
-    message(paste0("HUC8 ", huc8, " doesn't seem to contain any flowlines.
+    # make sure that the huc 8 contains flowlines
+    if (nrow(flowlines_subset) > 0) {
+      # transform the points to the same crs as the flowlines
+      sf_subset <- st_transform(sf_subset, crs = st_crs(flowlines_subset))
+      # get the rowid of the closest flowline
+      sf_subset$closest_flow_rowid <- st_nearest_feature(sf_subset, flowlines_subset)
+      df_subset_with_flow <- sf_subset %>% 
+        rowid_to_column() %>% 
+        split(f = .$rowid) %>% 
+        map(.x = .,
+            .f = ~{
+              # calculate distance
+              .x$dist_to_flow <- st_distance(.x, flowlines_subset[.x$closest_flow_rowid, ])
+              # and store the permanent_id
+              .x$flow_perm_id <- flowlines_subset$permanent_identifier[.x$closest_flow_rowid]
+              .x
+            }) %>% 
+        bind_rows() %>% 
+        select(-c(closest_flow_rowid, rowid)) %>% 
+        st_drop_geometry()
+      return(df_subset_with_flow)
+      
+    } else { # if there are no flowlines in the extent
+      
+      message(paste0("HUC8 ", huc8, " doesn't contain any flowlines.
                    This huc will be documented in the file 
                    `4_compile_sites/mid/no_flow_huc8.txt"))
-    if (!file.exists("4_compile_sites/mid/no_flow_huc8.txt")) {
-      write_lines(huc8, file = "4_compile_sites/mid/no_flow_huc8.txt")
+      if (!file.exists("4_compile_sites/mid/no_flow_huc8.txt")) {
+        write_lines(huc8, file = "4_compile_sites/mid/no_flow_huc8.txt")
+        return(NULL)
+      } else {
+        text <- read_lines("4_compile_sites/mid/no_flow_huc8.txt")
+        new_text <- c(text, huc8)
+        write_lines(new_text, "4_compile_sites/mid/no_flow_huc8.txt")
+        return(NULL)
+      }
+    }
+  },
+  
+  error = funciton(e) {
+    # if subset failed, note and go to next 
+    message(paste0("HUC8 ", huc8, " is not within the extent of the NHDPlusHR, 
+                     noting in '4_compile_sites/mid/out_extent_flow_huc8.txt'"))
+    if (!file.exists("4_compile_sites/mid/out_extent_flow_huc8.txt")) {
+      write_lines(huc8, file = "4_compile_sites/mid/out_extent_flow_huc8.txt")
       return(NULL)
     } else {
-      text <- read_lines("4_compile_sites/mid/no_flow_huc8.txt")
+      text <- read_lines("4_compile_sites/mid/out_extent_flow_huc8.txt")
       new_text <- c(text, huc8)
-      write_lines(new_text, "4_compile_sites/mid/no_flow_huc8.txt")
+      write_lines(new_text, "4_compile_sites/mid/out_extent_flow_huc8.txt")
       return(NULL)
     }
-  }
-  
+  })
 }
