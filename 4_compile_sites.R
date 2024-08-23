@@ -60,7 +60,7 @@ p4_compile_sites <- list(
         mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       p4_harmonized_sites %>%
         filter(!is.na(HUCEightDigitCode)) %>%
-        mutate(flag_HUC8 = 0)
+        mutate(flag_HUC8 = 0) %>% 
         bind_rows(assigned_HUC8)
     },
     packages = c("tidyverse", "sf", "arcgis")

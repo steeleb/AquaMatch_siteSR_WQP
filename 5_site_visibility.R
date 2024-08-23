@@ -7,8 +7,10 @@ p5_site_visibility <- list(
   # Create the unique HUCs to map over
   tar_target(
     name = p5_wbd_HUC8_list,
-    command = unique(na.omit(p4_add_NHD_waterbody_info$HUCEightDigitCode)),
-    packages = "sf"
+    command = p4_add_NHD_waterbody_info %>% 
+      # if there isn't a nhd waterbody to relate to, drop it from this summary
+      filter(!is.na(nhd_permanent_identifier)) %>% 
+      unique(na.omit(.$HUCEightDigitCode))
   ),
 
   # initial assessment of satellite visibility is completed by measuring distance
