@@ -7,19 +7,19 @@
 #' 
 #' @param sites_with_huc a spatial feature object of sites that have a huc assigned
 #' for spatial subsetting
-#' @param huc8 8-digit character string to filter sites by
+#' @param huc4 4-digit character string to filter sites by
 #' 
 #' @returns a dataframe of the spatial feature information with flowline and 
 #' distance to flowline assignment. Silently returns any hucs that had no
 #' flowlines associated with them
 #' 
 #' 
-add_NHD_flowline_to_sites <- function(sites_with_huc, huc8) {
-  message(paste0("Assigning NHD HR flowlines to sites within ", huc8))
+add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
+  message(paste0("Assigning NHD HR flowlines to sites within ", huc4))
   
-  # filter sites for those in a single huc
+  # filter sites for those in a single huc4
   sf_subset <- sites_with_huc %>%
-    filter(HUCEightDigitCode == huc8) 
+    filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) 
   
   # point to the nhdplushr MapServer url
   nhd_plus_hr_url <- "https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer"
@@ -60,16 +60,16 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc8) {
       
     } else { # if there are no flowlines in the extent
       
-      message(paste0("HUC8 ", huc8, " doesn't contain any flowlines.
+      message(paste0("HUC4 ", huc4, " doesn't contain any flowlines.
                    This huc will be documented in the file 
-                   `4_compile_sites/mid/no_flow_huc8.txt"))
-      if (!file.exists("4_compile_sites/mid/no_flow_huc8.txt")) {
-        write_lines(huc8, file = "4_compile_sites/mid/no_flow_huc8.txt")
+                   `4_compile_sites/mid/no_flow_huc4.txt"))
+      if (!file.exists("4_compile_sites/mid/no_flow_huc4.txt")) {
+        write_lines(huc4, file = "4_compile_sites/mid/no_flow_huc4.txt")
         return(NULL)
       } else {
-        text <- read_lines("4_compile_sites/mid/no_flow_huc8.txt")
-        new_text <- c(text, huc8)
-        write_lines(new_text, "4_compile_sites/mid/no_flow_huc8.txt")
+        text <- read_lines("4_compile_sites/mid/no_flow_huc4.txt")
+        new_text <- c(text, huc4)
+        write_lines(new_text, "4_compile_sites/mid/no_flow_huc4.txt")
         return(NULL)
       }
     }
@@ -77,15 +77,15 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc8) {
   
   error = function(e) {
     # if subset failed, note and go to next 
-    message(paste0("HUC8 ", huc8, " is not within the extent of the NHDPlusHR, 
-                     noting in '4_compile_sites/mid/out_extent_flow_huc8.txt'"))
-    if (!file.exists("4_compile_sites/mid/out_extent_flow_huc8.txt")) {
-      write_lines(huc8, file = "4_compile_sites/mid/out_extent_flow_huc8.txt")
+    message(paste0("HUC4 ", huc4, " is not within the extent of the NHDPlusHR, 
+                     noting in '4_compile_sites/mid/out_extent_flow_huc4.txt'"))
+    if (!file.exists("4_compile_sites/mid/out_extent_flow_huc4.txt")) {
+      write_lines(huc4, file = "4_compile_sites/mid/out_extent_flow_huc4.txt")
       return(NULL)
     } else {
-      text <- read_lines("4_compile_sites/mid/out_extent_flow_huc8.txt")
-      new_text <- c(text, huc8)
-      write_lines(new_text, "4_compile_sites/mid/out_extent_flow_huc8.txt")
+      text <- read_lines("4_compile_sites/mid/out_extent_flow_huc4.txt")
+      new_text <- c(text, huc4)
+      write_lines(new_text, "4_compile_sites/mid/out_extent_flow_huc4.txt")
       return(NULL)
     }
   })

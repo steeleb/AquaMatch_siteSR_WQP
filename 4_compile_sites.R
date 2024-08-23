@@ -66,23 +66,21 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf", "arcgis")
   ),
   
-  # todo: might consider whether or not it's faster to do this by HUC4 instead
-  # of HUC8
-  
   # Create the unique HUCs to map over, but drop those where a HUC8 was not 
   # able to be assigned, indicating that the point is not within the boundaries
-  # of the NHDPlusHR
+  # of the NHDPlusHR - processing via HUC4s is twice as fast as HUC8s
   tar_target(
-    name = p4_HUC8_list,
-    command = unique(na.omit(p4_add_HUC8$HUCEightDigitCode))
+    name = p4_HUC4_list,
+    command = unique(str_sub(na.omit(p4_add_HUC8$HUCEightDigitCode), 1, 4))
   ),
   
   # Get the waterbodies associated with each site by HUC8
   tar_target(
     name = p4_add_NHD_waterbody_info,
     command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
-                                         huc8 = p4_HUC8_list),
-    pattern = p4_HUC8_list,
+                                         huc4 = p4_HUC4_list) %>% 
+      bind_rows(),
+    pattern = p4_HUC4_list,
     packages = c("tidyverse", "sf", "arcgis", "rmapshaper")
   ),
   
@@ -90,7 +88,8 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_add_NHD_flowline_info,
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
-                                        huc8 = p4_HUC8_list),
+                                        huc4 = p4_HUC4_list) %>% 
+      bind_rows(),
     pattern = p4_HUC8_list,
     packages = c("tidyverse", "sf", "arcgis")
   ),
@@ -103,6 +102,8 @@ p4_compile_sites <- list(
   )
   
   # todo: Will need to address HUCs that are not in NHDPlusHR here ...
+  # thoughts: grab huc12s and asses via that route? Make sure these aren't actually 
+  # out of the AOI?
   
   
 )

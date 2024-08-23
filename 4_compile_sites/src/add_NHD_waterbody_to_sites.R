@@ -5,19 +5,19 @@
 #' a specific waterbody
 #' 
 #' @param sites_with_huc simple feature object of sites to pair with waterbodies
-#' @param huc8 8-digit character string to filter sites by
+#' @param huc4 4-digit character string to filter sites by
 #' 
 #' @returns a dataframe of the simple feature object of sites with additional 
-#' fields from the NHDPlusHR. Silently returns text files with huc8s that failed 
+#' fields from the NHDPlusHR. Silently returns text files with huc4s that failed 
 #' this function
 #' 
 #' 
-add_NHD_waterbody_to_sites <- function(sites_with_huc, huc8) {
-  message(paste0("Assigning NHD waterbodies to sites within ", huc8))
+add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
+  message(paste0("Assigning NHD waterbodies to sites within ", huc4))
   
   # filter sites for those in a single huc
   sf_subset <- sites_with_huc %>%
-    filter(HUCEightDigitCode == huc8) %>% 
+    filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) %>% 
     rowid_to_column()
   
   # point to the nhdplushr MapServer url
@@ -88,31 +88,31 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc8) {
         # return the sf with NHD info
         return(df_with_wbd)
       } else {
-        # if no waterbodies, note the huc8 in a text file
-        message(paste0("HUC8 ", huc8, " contains no waterbodies, noting in '4_compile_sites/mid/no_wbd_huc8.txt'"))
-        if (!file.exists("4_compile_sites/mid/no_wbd_huc8.txt")) {
-          write_lines(huc8, file = "4_compile_sites/mid/no_wbd_huc8.txt")
+        # if no waterbodies, note the huc4 in a text file
+        message(paste0("huc4 ", huc4, " contains no waterbodies, noting in '4_compile_sites/mid/no_wbd_huc4.txt'"))
+        if (!file.exists("4_compile_sites/mid/no_wbd_huc4.txt")) {
+          write_lines(huc4, file = "4_compile_sites/mid/no_wbd_huc4.txt")
           return(NULL)
         } else {
-          text <- read_lines("4_compile_sites/mid/no_wbd_huc8.txt")
-          new_text <- c(text, huc8)
-          write_lines(new_text, "4_compile_sites/mid/no_wbd_huc8.txt")
+          text <- read_lines("4_compile_sites/mid/no_wbd_huc4.txt")
+          new_text <- c(text, huc4)
+          write_lines(new_text, "4_compile_sites/mid/no_wbd_huc4.txt")
           return(NULL)
         }
       }
     },
     error = function(e) {
       # if subset failed, note and go to next 
-      message(paste0("HUC8 ", huc8, " is not within the extent of the NHDPlusHR, 
-                     noting in '4_compile_sites/mid/out_extent_wbd_huc8.txt'"))
-      if (!file.exists("4_compile_sites/mid/out_extent_wbd_huc8.txt")) {
-        write_lines(huc8, file = "4_compile_sites/mid/out_extent_wbd_huc8.txt")
+      message(paste0("huc4 ", huc4, " is not within the extent of the NHDPlusHR, 
+                     noting in '4_compile_sites/mid/out_extent_wbd_huc4.txt'"))
+      if (!file.exists("4_compile_sites/mid/out_extent_wbd_huc4.txt")) {
+        write_lines(huc4, file = "4_compile_sites/mid/out_extent_wbd_huc4.txt")
         return(NULL)
       } else {
-        text <- read_lines("4_compile_sites/mid/out_extent_wbd_huc8.txt")
-        new_text <- c(text, huc8)
-        write_lines(new_text, "4_compile_sites/mid/out_extent_wbd_huc8.txt")
+        text <- read_lines("4_compile_sites/mid/out_extent_wbd_huc4.txt")
+        new_text <- c(text, huc4)
+        write_lines(new_text, "4_compile_sites/mid/out_extent_wbd_huc4.txt")
         return(NULL)
-        }
+      }
     })
 }
