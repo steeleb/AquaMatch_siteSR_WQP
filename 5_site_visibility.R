@@ -22,7 +22,7 @@ p5_site_visibility <- list(
     command = calculate_distance_to_shore(sites_with_waterbodies = p4_add_NHD_waterbody_info, 
                                           huc8 = p5_wbd_HUC8_list),
     pattern = p5_wbd_HUC8_list,
-    packages = c("tidyverse", "sf", "nhdplusTools")
+    packages = c("tidyverse", "sf", "arcgis")
   ),
   
   # to mimic decisions in riverSR, we'll use a cutoff of 30m here

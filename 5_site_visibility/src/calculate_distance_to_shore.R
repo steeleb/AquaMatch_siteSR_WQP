@@ -24,9 +24,10 @@ calculate_distance_to_shore <- function(sites_with_waterbodies, huc8) {
         .f = ~ {
           # grab the associated waterbody
           waterbody <- arc_select(waterbodies,
+                                  # use SQL query for where
                                   where = paste0("Permanent_Identifier = '", 
                                                  unique(.x$nhd_permanent_identifier), 
-                                                 "'")
+                                                 "'"))
           # cast the waterbody into a linestring to measure distance
           waterbody_boundary <- st_cast(st_geometry(waterbody), "MULTILINESTRING")
           # measure the distance, rounded to integer
