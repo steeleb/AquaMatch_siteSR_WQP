@@ -50,13 +50,31 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
               # calculate distance
               .x$dist_to_flow <- st_distance(.x, flowlines_subset[.x$closest_flow_rowid, ])
               # and store the permanent_id
-              .x$flow_perm_id <- flowlines_subset$permanent_identifier[.x$closest_flow_rowid]
+              .x$flow_permanent_identifier <- flowlines_subset$permanent_identifier[.x$closest_flow_rowid]
               .x
             }) %>% 
         bind_rows() %>% 
-        select(-c(closest_flow_rowid, rowid)) %>% 
+        select(-c(closest_flow_rowid)) %>% 
         st_drop_geometry()
-      return(df_subset_with_flow)
+      
+      # add a 100m buffer and see how many points intersect multiple flowlines
+      # this is a stand in for how 'confident' we are in assigning a given point to a
+      # flowline
+      df_buffer_flow <- sf_subset %>% 
+        st_transform(., st_crs(flowlines_subset)) %>% 
+        st_buffer(dist = 100) %>% 
+        st_join(., flowlines_subset) %>% 
+        st_drop_geometry() %>% 
+        filter(!is.na(permanent_identifier)) %>% 
+        group_by(rowid) %>% 
+        summarize(n_flow_100m = n())
+      
+      # add that info to the dataframe
+      df_with_flow <- left_join(df_subset_with_flow, df_buffer_flow) %>% 
+        mutate(n_flow_100m = if_else(is.na(n_flow_100m), 0, n_flow_100m)) %>% 
+        select(-rowid)
+      
+      return(df_with_flow)
       
     } else { # if there are no flowlines in the extent
       

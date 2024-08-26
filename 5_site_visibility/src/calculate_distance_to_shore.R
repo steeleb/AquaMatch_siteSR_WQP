@@ -18,7 +18,7 @@ calculate_distance_to_shore <- function(sites_with_waterbodies, huc4) {
   # grab the NHD waterbodies layer using the mapserver
   waterbodies <- get_layer(nhd_hr, 9)
   
-  test <- sf_subset %>% 
+  sf_subset %>% 
     split(f = .$nhd_permanent_identifier) %>% 
     map(.x = .,
         .f = ~ {
