@@ -97,13 +97,14 @@ p4_compile_sites <- list(
   # And add that waterbody and flowline info to the unique sites with HUC info
   tar_target(
     name = p4_sites_with_NHD_attribution,
-    command = reduce(c(p4_add_HUC8, p4_add_NHD_waterbody_info, p4_add_NHD_flowline_info),
+    command = reduce(list(p4_add_HUC8, p4_add_NHD_waterbody_info, p4_add_NHD_flowline_info),
                      full_join)
   )
   
   # todo: Will need to address HUCs that are not in NHDPlusHR here ...
   # thoughts: grab huc12s and asses via that route? Make sure these aren't actually 
-  # out of the AOI?
+  # out of the AOI? I think this is because it's maxing out the request at this 
+  # extent (I think the max number of objects to return using the MapServer is 2k?)
   
   
 )
