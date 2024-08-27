@@ -197,4 +197,5 @@ config_targets <- list(
 # Full targets list
 c(config_targets,
   p4_compile_sites,
-  p5_site_visibility)
+  p5_site_visibility,
+  p6_siteSR_stack)

@@ -1,4 +1,4 @@
-# General purpose targets list for the harmonization step
+# Targets list to assess site remote sensing visibility
 
 # Source the functions that will be used to build the targets in p3_targets_list
 tar_source(files = "5_site_visibility/src/")
@@ -33,7 +33,14 @@ p5_site_visibility <- list(
   # to mimic decisions in riverSR, we'll use a cutoff of 30m here
   tar_target(
     name = visible_sites,
-    command = sites_with_distance_to_shore %>% filter(dist_to_shore >= 30)
+    command = {
+      visible_sites <- sites_with_distance_to_shore %>% 
+        filter(dist_to_shore >= 30) %>% 
+        st_drop_geometry()
+      write_csv(visible_sites, "5_site_visibility/out/visible_sites.csv")
+      visible_sites
+    },
+    packages = c("sf", "tidyverse")
   )
   
 )

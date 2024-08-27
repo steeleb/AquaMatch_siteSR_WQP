@@ -1,4 +1,5 @@
-# General purpose targets list for the harmonization step
+# Targets list to compile sites and attribute each feature to a waterbody or
+# flowline
 
 # Source the functions that will be used to build the targets in p3_targets_list
 tar_source(files = "4_compile_sites/src/")
