@@ -19,7 +19,8 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
   
   # filter sites for those in a single huc4
   sf_subset <- sites_with_huc %>%
-    filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) 
+    filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) %>% 
+    rowid_to_column()
   
   # point to the nhdplushr MapServer url
   nhd_plus_hr_url <- "https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer"
@@ -43,7 +44,6 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
       # get the rowid of the closest flowline
       sf_subset$closest_flow_rowid <- st_nearest_feature(sf_subset, flowlines_subset)
       df_subset_with_flow <- sf_subset %>% 
-        rowid_to_column() %>% 
         split(f = .$rowid) %>% 
         map(.x = .,
             .f = ~{
@@ -61,7 +61,6 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
       # this is a stand in for how 'confident' we are in assigning a given point to a
       # flowline
       df_buffer_flow <- sf_subset %>% 
-        st_transform(., st_crs(flowlines_subset)) %>% 
         st_buffer(dist = 100) %>% 
         st_join(., flowlines_subset) %>% 
         st_drop_geometry() %>% 
