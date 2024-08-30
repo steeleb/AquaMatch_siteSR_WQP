@@ -3,14 +3,13 @@
 #' @description 
 #' Function to read in yaml, reformat and pivot for easy use in scripts
 #' 
-#' @param yml_file user-specified file containing configuration details for the
-#' pull.
+#' @param yaml user-specified file containing configuration details for the
+#' pull read in using read_yaml
 #' @returns dataframe of the reformatted yaml file. Silently saves 
 #' the .csv in the `6_siteSR_stack/in` directory path.
 #' 
 #' 
-format_yaml <-  function(yml_file) {
-  yaml <-  read_yaml(yml_file)
+format_yaml <-  function(yaml) {
   # create a nested tibble from the yaml file
   nested <-  map_dfr(names(yaml), 
                      function(x) {

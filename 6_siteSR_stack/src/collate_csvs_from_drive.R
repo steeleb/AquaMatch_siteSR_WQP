@@ -27,28 +27,61 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
   # if point data are present, subset those, collate, and save
   if (any(grepl("site", files))) {
     point_files <- files[grepl("site", files)]
-    # collate files, but add the filename, since this *could be* is DSWE 1 + 3
-    all_points <- map_dfr(.x = point_files, 
-                          .f = function(.x) {
-                            file_name = last(str_split(.x, '/')[[1]])
-                            df <- read_csv(.x) 
-                            # grab all column names except system:index
-                            df_names <- colnames(df)[2:length(colnames(df))]
-                            # and coerce them to numeric for joining later
-                            df %>% 
-                              mutate(across(all_of(df_names),
-                                            ~ as.numeric(.)))%>% 
-                              mutate(source = file_name)
-                          }) 
-    write_feather(all_points, file.path("6_siteSR_stack/mid/",
-                                        paste0(file_prefix, "_collated_points_",
-                                               version_identifier, ".feather")))
+    
+    # check for DSWE1 and collate
+    if (length(grepl("DSWE1_", point_files)) > 0) {
+      DSWE1_files <- point_files[grepl("DSWE1_", point_files)]
+      # collate files, but add the filename, since this *could be* is DSWE 1 + 3
+      all_DSWE1_points <- map_dfr(.x = DSWE1_files, 
+                                  .f = function(.x) {
+                                    file_name = last(str_split(.x, '/')[[1]])
+                                    df <- read_csv(.x) %>% 
+                                      data.table(.)
+                                    # grab all column names except system:index
+                                    df_names <- colnames(df)[2:length(colnames(df))]
+                                    # and coerce them to numeric for joining later
+                                    df %>% 
+                                      mutate(across(all_of(df_names),
+                                                    ~ as.numeric(.)))%>% 
+                                      mutate(source = file_name)
+                                  }) 
+      write_feather(all_DSWE1_points, file.path("6_siteSR_stack/mid/",
+                                                paste0(file_prefix, 
+                                                       "_collated_points_DSWE1_",
+                                                       version_identifier, 
+                                                       ".feather")))
+    } 
+    
+    # check for DSWE1a and collate
+    if (length(grepl("DSWE1a", point_files)) > 0) {
+      DSWE1a_files <- point_files[grepl("DSWE1a", point_files)]
+      # collate files, but add the filename, since this *could be* is DSWE 1 + 3
+      all_DSWE1a_points <- map_dfr(.x = DSWE1a_files, 
+                                   .f = function(.x) {
+                                     file_name = last(str_split(.x, '/')[[1]])
+                                     df <- read_csv(.x) %>% 
+                                       data.table(.)
+                                     # grab all column names except system:index
+                                     df_names <- colnames(df)[2:length(colnames(df))]
+                                     # and coerce them to numeric for joining later
+                                     df %>% 
+                                       mutate(across(all_of(df_names),
+                                                     ~ as.numeric(.)))%>% 
+                                       mutate(source = file_name)
+                                   }) 
+      write_feather(all_DSWE1a_points, file.path("6_siteSR_stack/mid/",
+                                                 paste0(file_prefix, 
+                                                        "_collated_points_DSWE1a_",
+                                                        version_identifier, 
+                                                        ".feather")))
+    } 
+    
   } else {
     message("No site files have been downloaded.")
   }
   
   # return the list of files from this process
-  list.files("data_acquisition/mid/",
+  list.files("6_siteSR_stack/mid/",
              pattern = file_prefix,
              full.names = TRUE) %>% 
     #but make sure they are the specified version

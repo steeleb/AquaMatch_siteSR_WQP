@@ -1,10 +1,10 @@
 #import modules
 import ee
 import time
-import fiona
 from datetime import date, datetime
 import os 
 from pandas import read_csv
+import numpy as np
 
 # LOAD ALL THE CUSTOM FUNCTIONS -----------------------------------------------
 # pull code begins on line 1222
@@ -21,14 +21,13 @@ def csv_to_eeFeat(df, proj):
   """
   features=[]
   for i in range(df.shape[0]):
-    x,y = df.Longitude[i],df.Latitude[i]
+    x,y = df.Longitude.iloc[i],df.Latitude.iloc[i]
     latlong =[x,y]
-    loc_properties = {'system:index':str(df.id[i]), 'id':str(df.id[i])}
+    loc_properties = {'system:index':str(df.id.iloc[i]), 'id':str(df.id.iloc[i])}
     g=ee.Geometry.Point(latlong, proj) 
     feature = ee.Feature(g, loc_properties)
     features.append(feature)
-  ee_object = ee.FeatureCollection(features)
-  return ee_object
+  return ee.FeatureCollection(features)
 
 
 def apply_scale_factors(image):
@@ -1261,49 +1260,12 @@ extent = (yml['extent'][0]
   .split('+'))
 
 if 'site' in extent:
-  locations = read_csv('6_siteSR_stack/in/locs.csv')
+  locations = read_csv('6_siteSR_stack/out/locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
+  filtered_locs = locations[locations['PR'] == tiles]
   # convert locations to an eeFeatureCollection
-  locs_feature = csv_to_eeFeat(locations, yml['location_crs'][0])
+  locs_feature = csv_to_eeFeat(filtered_locs, yml['location_crs'][0])
 
 
-if 'polygon' in extent:
-  #if polygon is in extent, check for shapefile
-  shapefile = yml['polygon'][0]
-  # if shapefile provided by user 
-  if shapefile == True:
-    # load the shapefile into a Fiona object
-    with fiona.open('6_siteSR_stack/out/user_polygon.shp') as src:
-      shapes = ([ee.Geometry.Polygon(
-        [[x[0], x[1]] for x in feature['geometry']['coordinates'][0]]
-        ) for feature in src])
-  else: #otherwise use the NHDPlus file
-    # load the shapefile into a Fiona object
-    with fiona.open('6_siteSR_stack/out/NHDPlus_polygon.shp') as src:
-      shapes = ([ee.Geometry.Polygon(
-        [[x[0], x[1]] for x in feature['geometry']['coordinates'][0]]
-        ) for feature in src])
-  # Create an ee.Feature for each shape
-  features = [ee.Feature(shape, {}) for shape in shapes]
-  # Create an ee.FeatureCollection from the ee.Features
-  poly_feat = ee.FeatureCollection(features)
-
-
-if 'polycenter' in extent:
-  if yml['polygon'][0] == True:
-    centers_csv = read_csv('6_siteSR_stack/out/user_polygon_centers.csv')
-    centers_csv = (centers_csv.rename(columns={'poi_latitude': 'Latitude', 
-      'poi_longitude': 'Longitude',
-      'r_id': 'id'}))
-    # load the shapefile into a Fiona object
-    centers = csv_to_eeFeat(centers_csv, 'EPSG:4326')
-  else: #otherwise use the NHDPlus file
-    centers_csv = read_csv('6_siteSR_stack/out/NHDPlus_polygon_centers.csv')
-    centers_csv = (centers_csv.rename(columns={'poi_latitude': 'Latitude', 
-      'poi_longitude': 'Longitude',
-      'r_id': 'id'}))
-    centers = csv_to_eeFeat(centers_csv, 'EPSG:4326')
-  # Create an ee.FeatureCollection from the ee.Features
-  ee_centers = ee.FeatureCollection(centers)    
 
   
 
@@ -1321,20 +1283,21 @@ wrs_row = int(tiles[-3:])
 #grab images and apply scaling factors
 l7 = (ee.ImageCollection('LANDSAT/LE07/C02/T1_L2')
     .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
+    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
+    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
     .filterDate(yml_start, yml_end)
     .filterDate('1999-05-28', '2019-12-31') # for valid dates
-    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row)))
+    )
 l5 = (ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
     .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filterDate(yml_start, yml_end)
     .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row)))
+    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
+    .filterDate(yml_start, yml_end))
 l4 = (ee.ImageCollection('LANDSAT/LT04/C02/T1_L2')
     .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filterDate(yml_start, yml_end)
     .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row)))
+    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
+    .filterDate(yml_start, yml_end))
     
 # merge collections by image processing groups
 ls457 = ee.ImageCollection(l4.merge(l5).merge(l7))
@@ -1355,14 +1318,14 @@ bns457 = (['Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2',
 #grab image stacks
 l8 = (ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
     .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filterDate(yml_start, yml_end)
     .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row)))
+    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
+    .filterDate(yml_start, yml_end))
 l9 = (ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')
     .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filterDate(yml_start, yml_end)
     .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row)))
+    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
+    .filterDate(yml_start, yml_end))
 
 
 # merge collections by image processing groups
@@ -1393,15 +1356,6 @@ for e in extent:
   if e == 'site':
     ## get locs feature and buffer ##
     feat = (locs_feature
-      .filterBounds(geo)
-      .map(dp_buff))
-  elif e == 'polygon':
-    ## get the polygon stack ##
-    feat = (poly_feat
-      .filterBounds(geo))
-  elif e == 'polycenter':
-    ## get centers feature and buffer ##
-    feat = (ee_centers
       .filterBounds(geo)
       .map(dp_buff))
   else: 
