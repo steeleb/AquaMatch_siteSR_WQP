@@ -46,13 +46,7 @@ add_metadata <- function(yaml,
   walk(files, function(file) {
     # load file
     df <- read_feather(file) %>% 
-      data.table(.) %>% 
-      mutate(mission = case_when(grepl("LT04", `system:index`) ~ "LANDSAT_4",
-                                 grepl("LT05", `system:index`) ~ "LANDSAT_5",
-                                 grepl("LE07", `system:index`) ~ "LANDSAT_7",
-                                 grepl("LC08", `system:index`) ~ "LANDSAT_8",
-                                 grepl("LC09", `system:index`) ~ "LANDSAT_9",
-                                 TRUE ~ NA_character_)) 
+      data.table(.)
     
     # get the mission type
     miss <- unique(df$mission)
@@ -81,21 +75,10 @@ add_metadata <- function(yaml,
                                  str_flatten(parsed_sub, collapse = '_')
                                })
     
-    # dswe info is stored differently in each mission group because of character length
-    # so grab out mission-specific dswe info and use that to define dswe
-    file_pat <- first(df$source)
-
-    # locate where DSWE is in the source name
-    dswe_loc <- str_locate(file_pat, "DSWE") %>% 
-      # add 2 to the end to gather either DSWE value and '_' or DSWE value and 'a'
-      mutate(end = end + 2)
-    
+    # combine with metadata and spatial info
     df <- df %>% 
       select(-`system:index`) %>% 
       left_join(., meta_miss) %>% 
-      left_join(., dswe_loc) %>% 
-      mutate(DSWE = str_sub(source, start, end), .by = mission) %>% 
-      mutate(DSWE = str_remove(DSWE, "_")) %>%
       left_join(., spatial_info)
     
     # get the dswe type

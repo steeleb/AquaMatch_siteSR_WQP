@@ -49,7 +49,14 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
       walk(list("LT04", "LT05", "LE07", "LC08", "LC09"),
            function(miss) {
              df <- all_DSWE1_points %>% 
-               filter(grepl(miss, `system:index`))
+               filter(grepl(miss, `system:index`)) %>% 
+               mutate(DSWE = "DSWE1") %>% 
+               mutate(mission = case_when(miss == "LT04" ~ "LANDSAT_4",
+                                          miss == "LT05" ~ "LANDSAT_5",
+                                          miss == "LE07" ~ "LANDSAT_7",
+                                          miss == "LC08" ~ "LANDSAT_8",
+                                          miss == "LC09" ~ "LANDSAT_9",
+                                          TRUE ~ NA_character_))
              #save that mission's feather file
              write_feather(df, file.path("6_siteSR_stack/mid/",
                                          paste0(file_prefix, 
@@ -81,8 +88,15 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
       # filter for each mission to reduce file size
       walk(list("LT04", "LT05", "LE07", "LC08", "LC09"),
            function(miss) {
-             df <- all_DSWE1_points %>% 
-               filter(grepl(miss, `system:index`))
+             df <- all_DSWE1a_points %>% 
+               filter(grepl(miss, `system:index`)) %>% 
+               mutate(DSWE = "DSWE1a") %>% 
+               mutate(mission = case_when(miss == "LT04" ~ "LANDSAT_4",
+                                          miss == "LT05" ~ "LANDSAT_5",
+                                          miss == "LE07" ~ "LANDSAT_7",
+                                          miss == "LC08" ~ "LANDSAT_8",
+                                          miss == "LC09" ~ "LANDSAT_9",
+                                          TRUE ~ NA_character_))
              #save that mission's feather file
              write_feather(df, file.path("6_siteSR_stack/mid/",
                                          paste0(file_prefix, 
