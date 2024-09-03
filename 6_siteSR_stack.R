@@ -99,9 +99,6 @@ p6_siteSR_stack <- list(
     },
     packages = c("tidyverse", "googledrive")
   ),
-  
-  # get list of unique paths, otherwise the dataframe is way too big
-  
   # collate all files
   tar_target(
     name = p6_collated_data_files,
@@ -122,6 +119,5 @@ p6_siteSR_stack <- list(
                            version_identifier = p6_yml$run_date),
     packages = c("tidyverse", "feather", "data.table")
   )
-  
   
 )

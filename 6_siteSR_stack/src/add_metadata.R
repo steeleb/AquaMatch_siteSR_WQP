@@ -28,8 +28,7 @@ add_metadata <- function(yaml,
     mutate(IMAGE_QUALITY = if_else(is.na(IMAGE_QUALITY), 
                                    IMAGE_QUALITY_OLI, 
                                    IMAGE_QUALITY)) %>% 
-    rename(system.index = `system:index`) %>% 
-    select(system.index, 
+    select(system.index = `system:index`, 
            WRS_PATH, 
            WRS_ROW, 
            "mission" = SPACECRAFT_ID, 
@@ -54,6 +53,12 @@ add_metadata <- function(yaml,
                                  grepl("LC08", `system:index`) ~ "LANDSAT_8",
                                  grepl("LC09", `system:index`) ~ "LANDSAT_9",
                                  TRUE ~ NA_character_)) 
+    
+    # get the mission type
+    miss <- unique(df$mission)
+    
+    # filter the metadata to that mission
+    meta_miss <- filter(metadata_light, mission == miss)
     
     spatial_info <- read_csv(file.path(yaml$data_dir,
                                        yaml$location_file)) %>% 
@@ -82,6 +87,7 @@ add_metadata <- function(yaml,
       group_by(mission) %>% 
       slice(1) %>% 
       ungroup()
+    
     dswe_loc <- as_tibble(str_locate(mission_dswe$source, "DSWE")) %>% 
       rowid_to_column() %>% 
       left_join(., mission_dswe %>% rowid_to_column()) %>% 
@@ -90,7 +96,7 @@ add_metadata <- function(yaml,
     
     df <- df %>% 
       select(-`system:index`) %>% 
-      left_join(., metadata_light) %>% 
+      left_join(., metadata_miss) %>% 
       left_join(., dswe_loc) %>% 
       mutate(DSWE = str_sub(source, start, end), .by = mission) %>% 
       mutate(DSWE = str_remove(DSWE, "_")) %>%
@@ -98,15 +104,14 @@ add_metadata <- function(yaml,
     
     # get the dswe type
     dswe <- unique(df$DSWE)
-    
     write_feather(df,
                   file.path("6_siteSR_stack/out_files/",
                             paste0(file_prefix,
-                                   "_collated_",
-                                   dswe,
+                                   "_collated_point_meta_",
+                                   miss,
                                    "_",
-                                   ext,
-                                   "_meta_v",
+                                   dswe,
+                                   "_v",
                                    version_identifier,
                                    ".feather")))
   })

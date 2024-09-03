@@ -45,11 +45,20 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
                                                     ~ as.numeric(.)))%>% 
                                       mutate(source = file_name)
                                   }) 
-      write_feather(all_DSWE1_points, file.path("6_siteSR_stack/mid/",
-                                                paste0(file_prefix, 
-                                                       "_collated_points_DSWE1_",
-                                                       version_identifier, 
-                                                       ".feather")))
+      # filter for each mission to reduce file size
+      walk(list("LT04", "LT05", "LE07", "LC08", "LC09"),
+           function(miss) {
+             df <- all_DSWE1_points %>% 
+               filter(grepl(miss, `system:index`))
+             #save that mission's feather file
+             write_feather(df, file.path("6_siteSR_stack/mid/",
+                                         paste0(file_prefix, 
+                                                "_collated_points_",
+                                                miss,
+                                                "_DSWE1_",
+                                                version_identifier, 
+                                                ".feather")))
+           })
     } 
     
     # check for DSWE1a and collate
@@ -69,11 +78,20 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
                                                      ~ as.numeric(.)))%>% 
                                        mutate(source = file_name)
                                    }) 
-      write_feather(all_DSWE1a_points, file.path("6_siteSR_stack/mid/",
-                                                 paste0(file_prefix, 
-                                                        "_collated_points_DSWE1a_",
-                                                        version_identifier, 
-                                                        ".feather")))
+      # filter for each mission to reduce file size
+      walk(list("LT04", "LT05", "LE07", "LC08", "LC09"),
+           function(miss) {
+             df <- all_DSWE1_points %>% 
+               filter(grepl(miss, `system:index`))
+             #save that mission's feather file
+             write_feather(df, file.path("6_siteSR_stack/mid/",
+                                         paste0(file_prefix, 
+                                                "_collated_points_",
+                                                miss,
+                                                "_DSWE1a_",
+                                                version_identifier, 
+                                                ".feather")))
+           })
     } 
     
   } else {
