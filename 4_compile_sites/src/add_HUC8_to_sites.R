@@ -1,7 +1,7 @@
 #' @title Add HUC8 information to sites if not populated
 #' 
 #' @description
-#' This funciuon uses the location of a site to determine the HUC8 it
+#' This function uses the location of a site to determine the HUC8 it
 #' falls within and assigns that text to the `HUCEightDigitCode` column native
 #' to the WQP site information. This is only run for sites where the `HUCEightDigitCode`
 #' is NA
