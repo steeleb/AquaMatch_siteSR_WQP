@@ -107,7 +107,7 @@ p6_siteSR_stack <- list(
       collate_csvs_from_drive(file_prefix = p6_yml$proj, 
                               version_identifier = p6_yml$run_date)
     },
-    packages = c("tidyverse", "feather", "data.table")
+    packages = c("data.table", "tidyverse", "feather")
   ),
   
   # and collate the data with metadata
@@ -117,7 +117,7 @@ p6_siteSR_stack <- list(
                            collated_files = p6_collated_data_files,
                            file_prefix = p6_yml$proj,
                            version_identifier = p6_yml$run_date),
-    packages = c("tidyverse", "feather", "data.table")
+    packages = c("data.table", "tidyverse", "feather")
   )
   
 )

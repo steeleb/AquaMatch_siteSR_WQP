@@ -83,20 +83,16 @@ add_metadata <- function(yaml,
     
     # dswe info is stored differently in each mission group because of character length
     # so grab out mission-specific dswe info and use that to define dswe
-    mission_dswe <- df %>% 
-      group_by(mission) %>% 
-      slice(1) %>% 
-      ungroup()
-    
-    dswe_loc <- as_tibble(str_locate(mission_dswe$source, "DSWE")) %>% 
-      rowid_to_column() %>% 
-      left_join(., mission_dswe %>% rowid_to_column()) %>% 
-      select(rowid, mission, start, end) %>% 
+    file_pat <- first(df$source)
+
+    # locate where DSWE is in the source name
+    dswe_loc <- str_locate(file_pat, "DSWE") %>% 
+      # add 2 to the end to gather either DSWE value and '_' or DSWE value and 'a'
       mutate(end = end + 2)
     
     df <- df %>% 
       select(-`system:index`) %>% 
-      left_join(., metadata_miss) %>% 
+      left_join(., meta_miss) %>% 
       left_join(., dswe_loc) %>% 
       mutate(DSWE = str_sub(source, start, end), .by = mission) %>% 
       mutate(DSWE = str_remove(DSWE, "_")) %>%
