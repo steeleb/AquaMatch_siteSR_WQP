@@ -22,3 +22,6 @@ _targets/
 
 # Other
 **.DS_Store
+
+# Workflow-specific filepaths
+4_compile_sites/in/*
