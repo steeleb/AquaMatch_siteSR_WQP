@@ -25,3 +25,8 @@ _targets/
 
 # Workflow-specific filepaths
 4_compile_sites/in/*
+6_siteSR_stack/mid/*
+6_siteSR_stack/down/*
+
+# Python environment
+env/*
