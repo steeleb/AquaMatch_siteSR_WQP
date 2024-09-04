@@ -4,6 +4,12 @@
 #' Given points that have assigned NHD waterbodies, calculate the distance of the
 #' point to the shoreline
 #' 
+#' @param sites_with_waterbodies dataframe object of sites with waterbodies assigned
+#' to calculate distance from shore
+#' @param huc4 4-digit character string to filter sites by
+#' 
+#' @returns description
+#' 
 calculate_distance_to_shore <- function(sites_with_waterbodies, huc4) {
   # filter the waterbodies to those within the huc
   sf_subset <- sites_with_waterbodies %>% 

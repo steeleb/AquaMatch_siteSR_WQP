@@ -46,7 +46,7 @@ p5_site_visibility <- list(
     packages = c("tidyverse", "sf", "arcgis")
   ),
   
-  # to mimic decisions in riverSR, we'll use a cutoff of 30m here
+  # to mimic decisions in riverSR, we'll use a cutoff of 30m from a waterbody edge.
   tar_target(
     name = p5_visible_sites,
     command = {
@@ -63,4 +63,5 @@ p5_site_visibility <- list(
     packages = c("sf", "grid", "tidyverse")
   )
   
+  # deal with rivers! filter by distance to flowline (30m too)
 )
