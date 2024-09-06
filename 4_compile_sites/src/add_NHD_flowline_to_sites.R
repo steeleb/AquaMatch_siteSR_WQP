@@ -15,6 +15,7 @@
 #' 
 #' 
 add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
+  
   message(paste0("Assigning NHD HR flowlines to sites within ", huc4))
   
   # filter sites for those in a single huc4
@@ -31,16 +32,25 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
   
   # use the bounding box of the sites to query the flowlines within the AOI
   if (nrow(sf_subset) == 1) {
+    
+    # make the box bigger if there is just one row, the query includes any feature
+    # intersecting the bbox
     bbox <- sf_subset %>% 
-      st_buffer(1000) %>% 
+      st_buffer(100) %>% 
       st_bbox() %>% 
       st_as_sfc() 
+  
   } else {
+    
     bbox <- st_bbox(sf_subset) %>% 
       st_as_sfc()
+  
   }
   
   tryCatch({
+    
+    # when this function errors, it's usually here. The request can be too large and it
+    # fails. 
     flowlines_subset <- arc_select(flowlines,
                                    # remove tribs that will not be RS-visible
                                    # and only select likely RS-visible stream types
@@ -52,6 +62,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
     
     # make sure that the huc 8 contains flowlines
     if (nrow(flowlines_subset) > 0) {
+
       # transform the points to the same crs as the flowlines
       sf_subset <- st_transform(sf_subset, crs = st_crs(flowlines_subset))
       # get the rowid of the closest flowline
@@ -84,41 +95,59 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
       # add that info to the dataframe
       df_with_flow <- left_join(df_subset_with_flow, df_buffer_flow) %>% 
         mutate(n_flow_100m = if_else(is.na(n_flow_100m), 0, n_flow_100m),
-               # coerce dist_to_flow to numeric
-               dist_to_flow = as.numeric(dist_to_flow)) %>% 
-        select(-rowid)
+               # round to 1 dig
+               dist_to_flow = round(dist_to_flow, 1)) 
       
-      return(df_with_flow)
+      unresolved_flow <- sf_subset %>%
+        filter(!(rowid %in% unique(df_with_flow$rowid)))
       
-    } else { # if there are no flowlines in the extent
+      return(full_join(df_with_flow, unresolved_flow) %>% select(-rowid))
+
+    } else { 
       
+      # usually the request just errors and is sent to the catch, but just in case
+      # if there are no flowlines in the extent
       message(paste0("HUC4 ", huc4, " doesn't contain any flowlines.
                    This huc will be documented in the file 
                    `4_compile_sites/mid/no_flow_huc4.txt"))
+      
       if (!file.exists("4_compile_sites/mid/no_flow_huc4.txt")) {
+        
         write_lines(huc4, file = "4_compile_sites/mid/no_flow_huc4.txt")
         return(NULL)
+      
       } else {
+      
         text <- read_lines("4_compile_sites/mid/no_flow_huc4.txt")
         new_text <- c(text, huc4)
         write_lines(new_text, "4_compile_sites/mid/no_flow_huc4.txt")
         return(NULL)
+      
       }
+      
     }
+    
   },
   
   error = function(e) {
     # if subset failed, note and go to next 
     message(paste0("HUC4 ", huc4, " is not within the extent of the NHDPlusHR, 
                      noting in '4_compile_sites/mid/out_extent_flow_huc4.txt'"))
+    
     if (!file.exists("4_compile_sites/mid/out_extent_flow_huc4.txt")) {
+      
       write_lines(huc4, file = "4_compile_sites/mid/out_extent_flow_huc4.txt")
       return(NULL)
+    
     } else {
+    
       text <- read_lines("4_compile_sites/mid/out_extent_flow_huc4.txt")
       new_text <- c(text, huc4)
       write_lines(new_text, "4_compile_sites/mid/out_extent_flow_huc4.txt")
       return(NULL)
+    
     }
+    
   })
+  
 }
