@@ -16,7 +16,8 @@ tar_source(files = c(
   "src/",
   "4_compile_sites.R",
   "5_site_visibility.R",
-  "6_siteSR_stack.R"))
+  "6_siteSR_stack.R",
+  "7_siteSR_matchup.R"))
 
 # The list of targets/steps
 config_targets <- list(
@@ -198,4 +199,5 @@ config_targets <- list(
 c(config_targets,
   p4_compile_sites,
   p5_site_visibility,
-  p6_siteSR_stack)
+  p6_siteSR_stack,
+  p7_siteSR_matchup)
