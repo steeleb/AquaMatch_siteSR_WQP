@@ -20,6 +20,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
     filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) %>% 
     rowid_to_column()
   
+  
   # point to the nhdplushr MapServer url
   nhd_plus_hr_url <- "https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer"
   # open that connection
@@ -28,20 +29,35 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
   waterbodies <- get_layer(nhd_hr, 9)
   
   # use the bounding box of the sites to query the waterbodies within the AOI
-  bbox = st_bbox(sf_subset) %>% 
-    st_as_sfc()
-  
+  if (nrow(sf_subset) == 1) {
+    bbox <- sf_subset %>% 
+      st_buffer(1000) %>% 
+      st_bbox() %>% 
+      st_as_sfc() 
+  } else {
+    bbox <- st_bbox(sf_subset) %>% 
+      st_as_sfc()
+  }
+    
   tryCatch(
-    { # wrap this in a try catch to address AOIs outside of extent of NHD HR
+    
+    { # wrap this in a tryCatch to address AOIs outside of extent of NHD HR, or
+      # that otherwise fail the MapServer query
       waterbodies_subset <- arc_select(waterbodies,
+                                       # also limit the type and size of waterbody
+                                       # to make sure we stay within the limts of 
+                                       # the query (2k objects)
+                                       where = "ftype IN (390, 436, 493) AND areasqkm >= 0.01",
                                        filter_geom = bbox) 
       
       # make sure that the huc 8 contains waterbodies
       if (nrow(waterbodies_subset) > 0) {
+        
         # make the waterbodies valid
         # first try the simplistic st_make_valid
         huc_wbd <- waterbodies_subset %>% 
           st_make_valid()
+        
         # if that didn't work, use brute force and rmapshaper to simplify
         if (FALSE %in% st_is_valid(huc_wbd)) {
           # pull out geometries that are still invalid, if any
@@ -55,6 +71,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
           huc_wbd <- bind_rows(wbd_less, fixed)
           sf_use_s2(FALSE) # but turn it back off
         }
+        
         sf_with_wbd <- sf_subset %>% 
           # reproject in crs of huc
           st_transform(., st_crs(huc_wbd)) %>% 
@@ -68,6 +85,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
                  nhd_reach_code = reachcode,
                  nhd_ftype = ftype) %>% 
           st_drop_geometry()
+        
         # add a 100m buffer and see how many points intersect multiple waterbodies
         # this is a stand in for how 'confident' we are in assigning a given point to a
         # waterbody
@@ -87,32 +105,51 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         
         # return the sf with NHD info
         return(df_with_wbd)
+        
       } else {
-        # if no waterbodies, note the huc4 in a text file
-        message(paste0("huc4 ", huc4, " contains no waterbodies, noting in '4_compile_sites/mid/no_wbd_huc4.txt'"))
+        
+        # if no waterbodies returned, note the huc4 in a text file.
+        message(paste0("Observation extent within huc4 ", huc4, " contained no waterbodies, 
+                       noting in '4_compile_sites/mid/no_wbd_huc4.txt'"))
+        
         if (!file.exists("4_compile_sites/mid/no_wbd_huc4.txt")) {
+          
           write_lines(huc4, file = "4_compile_sites/mid/no_wbd_huc4.txt")
           return(NULL)
+        
         } else {
+          
           text <- read_lines("4_compile_sites/mid/no_wbd_huc4.txt")
           new_text <- c(text, huc4)
           write_lines(new_text, "4_compile_sites/mid/no_wbd_huc4.txt")
           return(NULL)
+        
         }
+        
       }
+      
     },
+    
     error = function(e) {
-      # if subset failed, note and go to next 
-      message(paste0("huc4 ", huc4, " is not within the extent of the NHDPlusHR, 
-                     noting in '4_compile_sites/mid/out_extent_wbd_huc4.txt'"))
-      if (!file.exists("4_compile_sites/mid/out_extent_wbd_huc4.txt")) {
-        write_lines(huc4, file = "4_compile_sites/mid/out_extent_wbd_huc4.txt")
+
+      # if query errored
+      message(paste0("Observation extent within huc4 ", huc4, " is outside of
+                     NHDPlusHR availability."))
+      
+      if (!file.exists("4_compile_sites/mid/out_extent_wb_huc4.txt")) {
+        
+        write_lines(huc4, file = "4_compile_sites/mid/out_extent_wb_huc4.txt")
         return(NULL)
+        
       } else {
-        text <- read_lines("4_compile_sites/mid/out_extent_wbd_huc4.txt")
+        
+        text <- read_lines("4_compile_sites/mid/out_extent_wb_huc4.txt")
         new_text <- c(text, huc4)
-        write_lines(new_text, "4_compile_sites/mid/out_extent_wbd_huc4.txt")
+        write_lines(new_text, "4_compile_sites/mid/out_extent_wb_huc4.txt")
         return(NULL)
+        
       }
+      
     })
+  
 }

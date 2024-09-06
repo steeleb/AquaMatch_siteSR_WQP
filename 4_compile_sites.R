@@ -49,22 +49,23 @@ p4_compile_sites <- list(
   # a few need it assigned - with chla and sdd this takes about 40 minutes
   # this step also adds a flag to gap-filled HUC8 fields:
   # 0 = HUC8 reported in WQP site information
-  # 1 = HUC8 determined from NHDPlusHR
+  # 1 = HUC8 determined from NHDPlusV2
   # 2 = HUC8 unable to be determined for site location
   tar_target(
     name = p4_add_HUC8,
     command = {
       need_HUC8 <- p4_harmonized_sites %>%
         filter(is.na(HUCEightDigitCode)) %>% 
+        # default the flag to 1 and reassign if HUC can not be added
         mutate(flag_HUC8 = 1)
       assigned_HUC8 <- add_HUC8_to_sites(sites_without_HUC = need_HUC8) %>% 
         mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       p4_harmonized_sites %>%
-        filter(!is.na(HUCEightDigitCode)) %>%
+        filter(!is.na(HUCEightDigitCode)) %>% 
         mutate(flag_HUC8 = 0) %>% 
-        bind_rows(assigned_HUC8)
+        bind_rows(assigned_HUC8) 
     },
-    packages = c("tidyverse", "sf", "arcgis")
+    packages = c("tidyverse", "sf", "nhdplusTools")
   ),
   
   # Create the unique HUCs to map over, but drop those where a HUC8 was not 
@@ -90,7 +91,7 @@ p4_compile_sites <- list(
     name = p4_add_NHD_flowline_info,
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
                                         huc4 = p4_HUC4_list) %>% 
-      bind_rows(),
+      bind_rows(), 
     pattern = p4_HUC4_list,
     packages = c("tidyverse", "sf", "arcgis")
   ),
@@ -103,7 +104,7 @@ p4_compile_sites <- list(
   )
   
   # todo: Will need to address HUCs that are not in NHDPlusHR here ...
-  # thoughts: grab huc12s and asses via that route? Make sure these aren't actually 
+  # thoughts: grab huc8s and asses via that route? Make sure these aren't actually 
   # out of the AOI? I think this is because it's maxing out the request at this 
   # extent (I think the max number of objects to return using the MapServer is 2k?)
   

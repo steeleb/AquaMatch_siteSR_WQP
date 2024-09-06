@@ -29,12 +29,25 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
   # grab the NHD flowlines layer using the mapserver
   flowlines <- get_layer(nhd_hr, 3)
   
-  # use the bounding box of the sites to query the flowlines
-  bbox = st_bbox(sf_subset) %>% 
-    st_as_sfc()
+  # use the bounding box of the sites to query the flowlines within the AOI
+  if (nrow(sf_subset) == 1) {
+    bbox <- sf_subset %>% 
+      st_buffer(1000) %>% 
+      st_bbox() %>% 
+      st_as_sfc() 
+  } else {
+    bbox <- st_bbox(sf_subset) %>% 
+      st_as_sfc()
+  }
   
   tryCatch({
     flowlines_subset <- arc_select(flowlines,
+                                   # remove tribs that will not be RS-visible
+                                   # and only select likely RS-visible stream types
+                                   # 556 = coastline, 428 = pipeline, 336 = canal/ditch
+                                   # 460 = stream/river, 468 = drainageway, 558 = artificial path (in waterbody),
+                                   # 420 = underground conduit, 334 = connector
+                                   where = "streamorde > 1 AND ftype IN (334, 558, 468, 460)",
                                    filter_geom = bbox) 
     
     # make sure that the huc 8 contains flowlines
@@ -70,7 +83,9 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4) {
       
       # add that info to the dataframe
       df_with_flow <- left_join(df_subset_with_flow, df_buffer_flow) %>% 
-        mutate(n_flow_100m = if_else(is.na(n_flow_100m), 0, n_flow_100m)) %>% 
+        mutate(n_flow_100m = if_else(is.na(n_flow_100m), 0, n_flow_100m),
+               # coerce dist_to_flow to numeric
+               dist_to_flow = as.numeric(dist_to_flow)) %>% 
         select(-rowid)
       
       return(df_with_flow)
