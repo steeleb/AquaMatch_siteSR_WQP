@@ -80,7 +80,8 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_add_NHD_waterbody_info,
     command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
-                                         huc4 = p4_HUC4_list) %>% 
+                                         huc4 = p4_HUC4_list,
+                                         buffer = 200) %>% 
       bind_rows(),
     pattern = p4_HUC4_list,
     packages = c("tidyverse", "sf", "arcgis", "rmapshaper")
@@ -90,7 +91,8 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_add_NHD_flowline_info,
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
-                                        huc4 = p4_HUC4_list) %>% 
+                                        huc4 = p4_HUC4_list,
+                                        buffer = 200) %>% 
       bind_rows(), 
     pattern = p4_HUC4_list,
     packages = c("tidyverse", "sf", "arcgis")
