@@ -84,7 +84,7 @@ add_metadata <- function(yaml,
     # get the dswe type
     dswe <- unique(df$DSWE)
     write_feather(df,
-                  file.path("6_siteSR_stack/out_files/",
+                  file.path("5_siteSR_stack/out/",
                             paste0(file_prefix,
                                    "_collated_point_meta_",
                                    miss,
@@ -96,7 +96,7 @@ add_metadata <- function(yaml,
   })
   
   # return the list of files from this process
-  file.path("6_siteSR_stack/out_files/",
+  file.path("5_siteSR_stack/out/",
             pattern = file_prefix,
             full.names = TRUE) %>% 
     #but make sure they are the specified version

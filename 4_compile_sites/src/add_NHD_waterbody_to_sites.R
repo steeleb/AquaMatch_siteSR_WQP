@@ -100,7 +100,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, buffer) {
       points = st_transform(points, crs = st_crs(waterbody_boundary))
       
       # measure the distance, rounded to one decimal resolution
-      sf_with_wbd$dist_to_shore <- round(st_distance(points, waterbody_boundary), 1)
+      sf_with_wbd$dist_to_shore <- as.numeric(round(st_distance(points, waterbody_boundary), 1))
       
       # add a 100m buffer and see how many points intersect multiple waterbodies
       # this is a stand in for how 'confident' we are in assigning a given point to a

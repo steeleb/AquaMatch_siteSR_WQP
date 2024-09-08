@@ -11,8 +11,8 @@ p4_compile_sites <- list(
     name = p4_check_dir_structure,
     command = {
       directories = c("4_compile_sites/in/",
-                      "4_compile_sites/mid/")
-      
+                      "4_compile_sites/mid/",
+                      "4_compile_sites/out/")
       walk(directories, function(dir) {
         if(!dir.exists(dir)){
           dir.create(dir)
@@ -68,7 +68,7 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf", "nhdplusTools")
   ),
   
-  # Create the unique HUCs to map over, but drop those where a HUC8 was not 
+  # Create the unique HUCs to map over, but drop those where a HUC4 was not 
   # able to be assigned, indicating that the point is not within the boundaries
   # of the NHDPlusHR - processing via HUC4s is twice as fast as HUC8s
   tar_target(
@@ -76,7 +76,7 @@ p4_compile_sites <- list(
     command = unique(str_sub(na.omit(p4_add_HUC8$HUCEightDigitCode), 1, 4))
   ),
   
-  # Get the waterbodies associated with each site by HUC8
+  # Get the waterbodies associated with each site by HUC4
   tar_target(
     name = p4_add_NHD_waterbody_info,
     command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
@@ -87,7 +87,7 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf", "arcgis", "rmapshaper")
   ),
   
-  # Calculate the closest flowline to each site by HUC8
+  # Calculate the closest flowline to each site by HUC4
   tar_target(
     name = p4_add_NHD_flowline_info,
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
@@ -101,9 +101,13 @@ p4_compile_sites <- list(
   # And add that waterbody and flowline info to the unique sites with HUC info
   tar_target(
     name = p4_sites_with_NHD_attribution,
-    command = reduce(list(p4_add_HUC8, p4_add_NHD_waterbody_info, p4_add_NHD_flowline_info),
-                     full_join)
-  )
+    command = {
+      collated_sites <- reduce(list(p4_add_HUC8, p4_add_NHD_waterbody_info, p4_add_NHD_flowline_info),
+                               full_join)
+      # write this file for use in yml/ee workflow
+      write_csv(collated_sites %>% st_drop_geometry(), "out/collated_sites.csv")
+      collated_sites
+    })
   
   # todo: Will need to address HUCs that are not in NHDPlusHR here ...
   # thoughts: grab huc8s and asses via that route? Make sure these aren't actually 

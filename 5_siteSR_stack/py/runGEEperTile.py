@@ -1221,14 +1221,14 @@ def maximum_no_of_tasks(MaxNActive, waitingPeriod):
 
 
 # get locations and yml from data folder
-yml = read_csv('6_siteSR_stack/in/yml.csv')
+yml = read_csv('5_siteSR_stack/run/yml.csv')
 
 eeproj = yml['ee_proj'][0]
 #initialize GEE
 ee.Initialize(project = eeproj)
 
 # get current tile
-with open('6_siteSR_stack/out/current_tile.txt', 'r') as file:
+with open('5_siteSR_stack/run/current_tile.txt', 'r') as file:
   tiles = file.read()
 
 # get EE/Google settings from yml file
@@ -1260,7 +1260,7 @@ extent = (yml['extent'][0]
   .split('+'))
 
 if 'site' in extent:
-  locations = read_csv('6_siteSR_stack/out/locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
+  locations = read_csv('5_siteSR_stack/run/locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
   filtered_locs = locations[locations['PR'] == tiles]
   # convert locations to an eeFeatureCollection
   locs_feature = csv_to_eeFeat(filtered_locs, yml['location_crs'][0])

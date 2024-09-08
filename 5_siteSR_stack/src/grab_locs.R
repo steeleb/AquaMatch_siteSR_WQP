@@ -20,7 +20,7 @@ grab_locs <- function(yaml) {
     # apply objects to tibble
     locs <- locs %>% 
       rename_with(~c("Latitude", "Longitude", "id"), any_of(c(lat, lon, id)))
-    write_csv(locs, "6_siteSR_stack/in/locs.csv")
+    write_csv(locs, "5_siteSR_stack/run/locs.csv")
     return(locs)
   } else {
     message("Not configured to use site locations.")

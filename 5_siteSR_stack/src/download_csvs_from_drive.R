@@ -2,7 +2,7 @@
 #' 
 #' @description
 #' description Function to download all csv files from a specific drive folder 
-#' to the untracked 6_siteSR_stack/down/ folder
+#' to the untracked 5_siteSR_stack/down/ folder
 #'
 #' @param drive_folder_name text string; name of folder in Drive, must be unique
 #' @param google_email text string; google email address for Drive authentication
@@ -10,7 +10,7 @@
 #' data are associated with
 #' 
 #' @returns downloads all .csvs from the specified folder name to the
-#' 6_siteSR_stack/down/ folder
+#' 5_siteSR_stack/down/ folder
 #' 
 #' 
 download_csvs_from_drive <- function(drive_folder_name, google_email, version_identifier) {
@@ -19,16 +19,16 @@ download_csvs_from_drive <- function(drive_folder_name, google_email, version_id
   dribble_files <- dribble_files %>% 
     filter(grepl(".csv", name))
   # make sure version-specific directory exists, create it if not
-  if(!dir.exists(file.path("6_siteSR_stack/down/", 
+  if(!dir.exists(file.path("5_siteSR_stack/down/", 
                            version_identifier))) {
-    dir.create(file.path("6_siteSR_stack/down/", 
+    dir.create(file.path("5_siteSR_stack/down/", 
                          version_identifier), recursive = TRUE)
   }
   walk2(.x = dribble_files$id,
         .y = dribble_files$name, 
         .f = function(.x, .y) {
           try(drive_download(file = .x,
-                         path = file.path("6_siteSR_stack/down/", 
+                         path = file.path("5_siteSR_stack/down/", 
                                           version_identifier,
                                           .y),
                          overwrite = FALSE)) # just pass if already downloaded

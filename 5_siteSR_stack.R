@@ -22,8 +22,8 @@ p5_siteSR_stack <- list(
     command = {
       directories = c("5_siteSR_stack/mid/",
                       "5_siteSR_stack/down/",
-                      "5_siteSR_stack/out/",
-                      "5_siteSR_stack/collated/")
+                      "5_siteSR_stack/run/",
+                      "5_siteSR_stack/out/")
       walk(directories, function(dir) {
         if(!dir.exists(dir)){
           dir.create(dir)
@@ -49,11 +49,11 @@ p5_siteSR_stack <- list(
     command = format_yaml(yaml = p5_config_file)
   ),
   
-  # load, format, save locations, depends on visible_sites target
+  # load, format, save locations, depends on p4_sites_with_NHD_attribution target
   tar_target(
     name = p5_locs,
     command = {
-      p5_visible_sites
+      p4_sites_with_NHD_attribution
       grab_locs(yaml = p5_yml)
     }
   ),
@@ -67,11 +67,12 @@ p5_siteSR_stack <- list(
     packages = c("readr", "sf")
   ),
   
-  
   # Run Pekel Instance by WRS tile
   tar_target(
     name = p5_run_pekel,
-    command = run_pekel_per_tile()
+    command = run_pekel_per_tile(WRS_tile = p5_WRS_tiles),
+    pattern = map(p5_WRS_tiles),
+    packages = "reticulate"
   ),
   
   # wait for all earth engine tasks to be completed

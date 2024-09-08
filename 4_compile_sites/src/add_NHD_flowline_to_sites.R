@@ -108,7 +108,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc, huc4, buffer) {
         # in case)
         unresolved_flow <- sub_feat %>%
           filter(!(rowid %in% unique(df_with_flow$rowid))) %>% 
-          select(-rowid) %>% 
+          select(-c(rowid, closest_flow_rowid)) %>% 
           st_drop_geometry()
         
         full_join(df_with_flow, unresolved_flow) 

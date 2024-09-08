@@ -6,7 +6,7 @@
 #' @param yaml user-specified file containing configuration details for the
 #' pull read in using read_yaml
 #' @returns dataframe of the reformatted yaml file. Silently saves 
-#' the .csv in the `6_siteSR_stack/in` directory path.
+#' the .csv in the `5_siteSR_stack/run/` directory path.
 #' 
 #' 
 format_yaml <-  function(yaml) {
@@ -32,7 +32,7 @@ format_yaml <-  function(yaml) {
     select(desc, param) %>% 
     pivot_wider(names_from = desc, 
                 values_from = param)
-  write_csv(unnested, "6_siteSR_stack/in/yml.csv")
+  write_csv(unnested, "5_siteSR_stack/run/yml.csv")
   unnested
 }
 
