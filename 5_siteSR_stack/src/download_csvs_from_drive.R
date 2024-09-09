@@ -8,29 +8,47 @@
 #' @param google_email text string; google email address for Drive authentication
 #' @param version_identifier user-specified string to identify the RS pull these
 #' data are associated with
+#' @param download_type text string; either "stack" or "pekel"
 #' 
 #' @returns downloads all .csvs from the specified folder name to the
 #' 5_siteSR_stack/down/ folder
 #' 
 #' 
-download_csvs_from_drive <- function(drive_folder_name, google_email, version_identifier) {
+download_csvs_from_drive <- function(drive_folder_name, 
+                                     google_email, 
+                                     version_identifier,
+                                     download_type) {
   drive_auth(email = google_email)
   dribble_files <- drive_ls(path = drive_folder_name)
   dribble_files <- dribble_files %>% 
     filter(grepl(".csv", name))
+  # filter files for download types
+  if (download_type == "stack") {
+    dribble_files <- dribble_files[grepl("version_identifier", dribble_files)]
+  } else {
+    if (download_type == "pekel") {
+      dribble_files <- dribble_files[grepl("pekel", dribble_files, ignore.case = T)]
+    } else {
+      print("Download type not recognized, make sure it is either 'stack' or 'pekel'.")
+      stop()
+    }
+  }
   # make sure version-specific directory exists, create it if not
   if(!dir.exists(file.path("5_siteSR_stack/down/", 
-                           version_identifier))) {
+                           version_identifier, 
+                           download_type))) {
     dir.create(file.path("5_siteSR_stack/down/", 
-                         version_identifier), recursive = TRUE)
+                         version_identifier,
+                         download_type), recursive = TRUE)
   }
   walk2(.x = dribble_files$id,
         .y = dribble_files$name, 
         .f = function(.x, .y) {
           try(drive_download(file = .x,
-                         path = file.path("5_siteSR_stack/down/", 
+                         path = file.path("5_siteSR_stack/down/",
                                           version_identifier,
+                                          download_type,
                                           .y),
-                         overwrite = FALSE)) # just pass if already downloaded
+                         overwrite = TRUE)) 
           })
 }

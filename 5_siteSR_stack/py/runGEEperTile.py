@@ -1260,7 +1260,7 @@ extent = (yml['extent'][0]
   .split('+'))
 
 if 'site' in extent:
-  locations = read_csv('5_siteSR_stack/run/locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
+  locations = read_csv('5_siteSR_stack/run/visible_locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
   filtered_locs = locations[locations['PR'] == tiles]
   # convert locations to an eeFeatureCollection
   locs_feature = csv_to_eeFeat(filtered_locs, yml['location_crs'][0])

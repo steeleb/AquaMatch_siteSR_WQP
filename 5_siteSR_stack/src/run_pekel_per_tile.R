@@ -8,7 +8,7 @@
 #' Python script). Silently triggers GEE to start Pekel acquisition per tile.
 #' 
 #' 
-run_GEE_per_tile <- function(WRS_tile) {
+run_pekel_per_tile <- function(WRS_tile) {
   write_lines(WRS_tile, "5_siteSR_stack/run/current_tile.txt", sep = "")
   source_python("5_siteSR_stack/py/runPekelPerTile.py")
 }

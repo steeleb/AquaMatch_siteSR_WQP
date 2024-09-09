@@ -1,0 +1,2 @@
+data_dir,location_file,unique_id,latitude,longitude,location_crs,google_email,proj,proj_folder,ee_proj,run_date,start_date,end_date,extent,site_buffer,cloud_filter,cloud_thresh,water_detection,DSWE_setting
+~/Documents/GitHub/AquaMatch_siteSR_WQP/4_compile_sites/out/,collated_sites.csv,rowid,WGS84_Latitude,WGS84_Longitude,EPSG:4326,therossyndicate@gmail.com,siteSR,siteSR_prelim,ee-aquamatch,2024-08-27,1983-01-01,today,site,200,True,75,DSWE,1a

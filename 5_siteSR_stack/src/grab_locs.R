@@ -11,7 +11,7 @@
 #' 
 #' 
 grab_locs <- function(yaml) {
-  if (grepl("site", yaml$extent[1])) {
+  if (grepl("site", yaml$extent)) {
     locs <- read_csv(file.path(yaml$data_dir, yaml$location_file))
     # store yaml info as objects
     lat <- yaml$latitude
