@@ -3,8 +3,9 @@ import ee
 import time
 from datetime import date, datetime
 import os 
-from pandas import read_csv
+import pandas as pd
 import numpy as np
+from functools import partial
 
 # LOAD ALL THE CUSTOM FUNCTIONS -----------------------------------------------
 # pull code begins on line 1222
@@ -482,7 +483,7 @@ def apply_high_aero_mask(image):
 
 
 ## Set up the reflectance pull
-def ref_pull_457_DSWE1(image):
+def ref_pull_457_DSWE1(image, feat):
   """ This function applies all functions to the Landsat 4-7 ee.ImageCollection, extracting
   summary statistics for each geometry area where the DSWE value is 1 (high confidence water)
 
@@ -598,7 +599,7 @@ def ref_pull_457_DSWE1(image):
   return out
 
 ## Set up the reflectance pull
-def ref_pull_457_DSWE1a(image):
+def ref_pull_457_DSWE1a(image, feat):
   """ This function applies all functions to the Landsat 4-7 ee.ImageCollection, extracting
   summary statistics for each geometry area where the DSWE value is 1 (high confidence water)
   or where the algal mask threshold is met
@@ -715,7 +716,7 @@ def ref_pull_457_DSWE1a(image):
   out = lsout.map(remove_geo)
   return out
 
-def ref_pull_457_DSWE3(image):
+def ref_pull_457_DSWE3(image, feat):
   """ This function applies all functions to the Landsat 4-7 ee.ImageCollection, extracting
   summary statistics for each geometry area where the DSWE value is 3 (high confidence
   vegetated pixel)
@@ -832,7 +833,7 @@ def ref_pull_457_DSWE3(image):
   return out
 
 
-def ref_pull_89_DSWE1(image):
+def ref_pull_89_DSWE1(image, feat):
   """ This function applies all functions to the Landsat 8 and 9 ee.ImageCollection, extracting
   summary statistics for each geometry area where the DSWE value is 1 (high confidence water)
 
@@ -949,7 +950,7 @@ def ref_pull_89_DSWE1(image):
   return out
 
 
-def ref_pull_89_DSWE1a(image):
+def ref_pull_89_DSWE1a(image, feat):
   """ This function applies all functions to the Landsat 8 and 9 ee.ImageCollection, extracting
   summary statistics for each geometry area where the DSWE value is 1 (high confidence water)
   or the algal threshold has been met
@@ -1069,7 +1070,7 @@ def ref_pull_89_DSWE1a(image):
   return out
 
 
-def ref_pull_89_DSWE3(image):
+def ref_pull_89_DSWE3(image, feat):
   """ This function applies all functions to the Landsat 8 and 9 ee.ImageCollection, extracting
   summary statistics for each geometry area where the DSWE value is 3 (high confidence vegetated
   pixels)
@@ -1221,7 +1222,7 @@ def maximum_no_of_tasks(MaxNActive, waitingPeriod):
 
 
 # get locations and yml from data folder
-yml = read_csv('5_siteSR_stack/run/yml.csv')
+yml = pd.read_csv('5_siteSR_stack/run/yml.csv')
 
 eeproj = yml['ee_proj'][0]
 #initialize GEE
@@ -1255,19 +1256,13 @@ try:
 except AttributeError: 
   dswe = yml['DSWE_setting'][0]
 
-# get extent info
-extent = (yml['extent'][0]
-  .split('+'))
+locations = (pd.read_csv('5_siteSR_stack/run/visible_locs_with_WRS.csv', 
+                      dtype = ({"id": np.int32, 
+                                "Latitude": np.float64, 
+                                "Longitude": np.float64, 
+                                "WRSPR": str})))
+filtered_locs = locations[locations['WRSPR'] == tiles]
 
-if 'site' in extent:
-  locations = read_csv('5_siteSR_stack/run/visible_locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
-  filtered_locs = locations[locations['PR'] == tiles]
-  # convert locations to an eeFeatureCollection
-  locs_feature = csv_to_eeFeat(filtered_locs, yml['location_crs'][0])
-
-
-
-  
 
 ##############################################
 ##---- CREATING EE FEATURECOLLECTIONS   ----##
@@ -1348,18 +1343,22 @@ bns89 = (['Aerosol','Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2',
 ##---- LANDSAT 457 ACQUISITION      ----##
 ##########################################
 
-## run the pull for LS457, looping through all extents from yml
-for e in extent:
+# Map the pull function over the 5000 or so created sites, if needed
+def process_subset(df_subset, chunk):
+  """
+  This function processes a subset of the DataFrame.
+  Replace this with your actual processing function.
+  """
   
+  locs_feature = csv_to_eeFeat(df_subset, yml['location_crs'][0])
+  
+  ## run the pull for LS457
   geo = wrs.geometry()
   
-  if e == 'site':
-    ## get locs feature and buffer ##
-    feat = (locs_feature
-      .filterBounds(geo)
-      .map(dp_buff))
-  else: 
-    print('Extent not identified. Check configuration file.')
+  ## get locs feature and buffer ##
+  feat = (locs_feature
+    .filterBounds(geo)
+    .map(dp_buff))
   
   ## process 457 stack
   #snip the ls data by the geometry of the location points    
@@ -1378,10 +1377,9 @@ for e in extent:
   if '1' in dswe:
     # pull DSWE1 and DSWE1 with algal mask if configured
     if '1a' in dswe:
-      print('Starting Landsat 4, 5, 7 DSWE 1 acquisition for ' + e + ' configuration at tile ' + str(tiles))
-      locs_out_457_D1 = locs_stack_ls457.map(ref_pull_457_DSWE1).flatten()
+      locs_out_457_D1 = locs_stack_ls457.map(lambda image: ref_pull_457_DSWE1(image, feat)).flatten()
       locs_out_457_D1 = locs_out_457_D1.filter(ee.Filter.notNull(['med_Blue']))
-      locs_srname_457_D1 = proj+'_'+e+'_LS457_C2_SRST_DSWE1_'+str(tiles)+'_v'+run_date
+      locs_srname_457_D1 = proj+'_site_LS457_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_457_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_457_D1,
                                               description = locs_srname_457_D1,
                                               folder = proj_folder,
@@ -1401,11 +1399,10 @@ for e in extent:
       maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_457_D1.start()
-      print('Completed Landsat 4, 5, 7 DSWE 1 stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
-      print('Starting Landsat 4, 5, 7 DSWE 1a acquisition for ' + e + ' configuration at tile ' + str(tiles))
-      locs_out_457_D1a = locs_stack_ls457.map(ref_pull_457_DSWE1a).flatten()
+      print('Completed Landsat 4, 5, 7 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
+      locs_out_457_D1a = locs_stack_ls457.map(lambda image: ref_pull_457_DSWE1a(image, feat)).flatten()
       locs_out_457_D1a = locs_out_457_D1a.filter(ee.Filter.notNull(['med_Blue']))
-      locs_srname_457_D1a = proj+'_'+e+'_LS457_C2_SRST_DSWE1a_'+str(tiles)+'_v'+run_date
+      locs_srname_457_D1a = proj+'_site_LS457_C2_SRST_DSWE1a_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_457_D1a = (ee.batch.Export.table.toDrive(collection = locs_out_457_D1a,
                                               description = locs_srname_457_D1a,
                                               folder = proj_folder,
@@ -1425,15 +1422,13 @@ for e in extent:
       maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_457_D1a.start()
-      print('Completed Landsat 4, 5, 7 DSWE 1a stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
+      print('Completed Landsat 4, 5, 7 DSWE 1a stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
     
     else: 
-      print('Not configured to acquire DSWE 1a stack for Landsat 4, 5, 7 for ' + e + ' configuration')
-      # and pull DSWE1
-      print('Starting Landsat 4, 5, 7 DSWE1 acquisition for ' + e + ' configuration at tile ' + str(tiles))
-      locs_out_457_D1 = locs_stack_ls457.map(ref_pull_457_DSWE1).flatten()
+      # only pull DSWE1
+      locs_out_457_D1 = locs_stack_ls457.map(lambda image: ref_pull_457_DSWE1(image, feat)).flatten()
       locs_out_457_D1 = locs_out_457_D1.filter(ee.Filter.notNull(['med_Blue']))
-      locs_srname_457_D1 = proj+'_'+e+'_LS457_C2_SRST_DSWE1_'+str(tiles)+'_v'+run_date
+      locs_srname_457_D1 = proj+'_site_LS457_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_457_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_457_D1,
                                               description = locs_srname_457_D1,
                                               folder = proj_folder,
@@ -1453,17 +1448,16 @@ for e in extent:
       maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_457_D1.start()
-      print('Completed Landsat 4, 5, 7 DSWE 1 stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
+      print('Completed Landsat 4, 5, 7 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
     
-  else: print('Not configured to acquire DSWE 1 or DSWE 1a stack for Landsat 4, 5, 7 for ' + e + ' configuration')
+  else: print('Not configured to acquire DSWE 1 or DSWE 1a stack for Landsat 4, 5, 7 for site configuration')
   
   # pull DSWE3 variants if configured
   if '3' in dswe:
     # pull DSWE3
-    print('Starting Landsat 4, 5, 7 DSWE3 acquisition for ' + e + ' configuration at tile ' + str(tiles))
-    locs_out_457_D3 = locs_stack_ls457.map(ref_pull_457_DSWE3).flatten()
+    locs_out_457_D3 = locs_stack_ls457.map(lambda image: ref_pull_457_DSWE3(image, feat)).flatten()
     locs_out_457_D3 = locs_out_457_D3.filter(ee.Filter.notNull(['med_Blue']))
-    locs_srname_457_D3 = proj+'_'+e+'_LS457_C2_SRST_DSWE3_'+str(tiles)+'_v'+run_date
+    locs_srname_457_D3 = proj+'_site_LS457_C2_SRST_DSWE3_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
     locs_dataOut_457_D3 = (ee.batch.Export.table.toDrive(collection = locs_out_457_D3,
                                             description = locs_srname_457_D3,
                                             folder = proj_folder,
@@ -1483,37 +1477,13 @@ for e in extent:
     maximum_no_of_tasks(10, 120)
     #Send next task.                                        
     locs_dataOut_457_D3.start()
-    print('Completed Landsat 4, 5, 7 DSWE 3 stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
+    print('Completed Landsat 4, 5, 7 DSWE 3 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
     
-  else: print('Not configured to acquire DSWE 3 stack for Landsat 4, 5, 7 for ' + e + ' configuration')
-
-
-
-#########################################
-##---- LANDSAT 89 SITE ACQUISITION ----##
-#########################################
-
-for e in extent:
+  else: print('Not configured to acquire DSWE 3 stack for Landsat 4, 5, 7 for site configuration')
   
-  geo = wrs.geometry()
-  
-  # use extent configuration to define feature for pull
-  if e == 'site':
-    ## get locs feature and buffer ##
-    feat = (locs_feature
-      .filterBounds(geo)
-      .map(dp_buff))
-  elif e == 'polygon':
-    ## get the polygon stack ##
-    feat = (poly_feat
-      .filterBounds(geo))
-  elif e == 'polycenter':
-    ## get centers feature and buffer ##
-    feat = (ee_centers
-      .filterBounds(geo)
-      .map(dp_buff))
-  else: 
-    print('Extent not identified. Check configuration file.')
+  #########################################
+  ##---- LANDSAT 89 SITE ACQUISITION ----##
+  #########################################
   
   # snip the ls data by the geometry of the location points    
   locs_stack_ls89 = (ls89
@@ -1529,10 +1499,9 @@ for e in extent:
   
   if '1' in dswe:
     if '1a' in dswe:
-      print('Starting Landsat 8, 9 DSWE1 acquisition for ' + e + ' configuration at tile ' + str(tiles))
-      locs_out_89_D1 = locs_stack_ls89.map(ref_pull_89_DSWE1).flatten()
+      locs_out_89_D1 = locs_stack_ls89.map(lambda image: ref_pull_89_DSWE1(image, feat)).flatten()
       locs_out_89_D1 = locs_out_89_D1.filter(ee.Filter.notNull(['med_Blue']))
-      locs_srname_89_D1 = proj+'_'+ e + '_LS89_C2_SRST_DSWE1_'+str(tiles)+'_v'+run_date
+      locs_srname_89_D1 = proj+'_site_LS89_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_89_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_89_D1,
                                               description = locs_srname_89_D1,
                                               folder = proj_folder,
@@ -1552,11 +1521,10 @@ for e in extent:
       maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_89_D1.start()
-      print('Completed Landsat 8, 9 DSWE 1 stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
-      print('Starting Landsat 8, 9 DSWE 1a acquisition for ' + e + ' configuration at tile ' + str(tiles))
-      locs_out_89_D1a = locs_stack_ls89.map(ref_pull_89_DSWE1a).flatten()
+      print('Completed Landsat 8, 9 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
+      locs_out_89_D1a = locs_stack_ls89.map(lambda image: ref_pull_89_DSWE1a(image, feat)).flatten()
       locs_out_89_D1a = locs_out_89_D1a.filter(ee.Filter.notNull(['med_Blue']))
-      locs_srname_89_D1a = proj+'_'+e+'_LS89_C2_SRST_DSWE1a_'+str(tiles)+'_v'+run_date
+      locs_srname_89_D1a = proj+'_site_LS89_C2_SRST_DSWE1a_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_89_D1a = (ee.batch.Export.table.toDrive(collection = locs_out_89_D1a,
                                               description = locs_srname_89_D1a,
                                               folder = proj_folder,
@@ -1576,13 +1544,11 @@ for e in extent:
       maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_89_D1a.start()
-      print('Completed Landsat 8, 9 DSWE 1a stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
+      print('Completed Landsat 8, 9 DSWE 1a stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
     else:
-      print('Not configured to acquire DSWE 1a stack for Landsat 8, 9 for ' + e + ' configuration')
-      print('Starting Landsat 8, 9 DSWE1 acquisition for ' + e + ' configuration at tile ' + str(tiles))
-      locs_out_89_D1 = locs_stack_ls89.map(ref_pull_89_DSWE1).flatten()
+      locs_out_89_D1 = locs_stack_ls89.map(lambda image: ref_pull_89_DSWE1(image, feat)).flatten()
       locs_out_89_D1 = locs_out_89_D1.filter(ee.Filter.notNull(['med_Blue']))
-      locs_srname_89_D1 = proj+'_'+e+'_LS89_C2_SRST_DSWE1_'+str(tiles)+'_v'+run_date
+      locs_srname_89_D1 = proj+'_site_LS89_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_89_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_89_D1,
                                               description = locs_srname_89_D1,
                                               folder = proj_folder,
@@ -1602,15 +1568,14 @@ for e in extent:
       maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_89_D1.start()
-      print('Completed Landsat 8, 9 DSWE 1 stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
+      print('Completed Landsat 8, 9 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
   
-  else: print('Not configured to acquire DSWE 1 stack for Landsat 8, 9 for ' + e + ' configuration')
+  else: print('Not configured to acquire DSWE 1 stack for Landsat 8, 9 for site configuration')
   
   if '3' in dswe:
-    print('Starting Landsat 8, 9 DSWE3 acquisition for ' + e + ' configuration at tile ' + str(tiles))
-    locs_out_89_D3 = locs_stack_ls89.map(ref_pull_89_DSWE3).flatten()
+    locs_out_89_D3 = locs_stack_ls89.map(lambda image: ref_pull_89_DSWE3(image, feat)).flatten()
     locs_out_89_D3 = locs_out_89_D3.filter(ee.Filter.notNull(['med_Blue']))
-    locs_srname_89_D3 = proj+'_'+e+'_LS89_C2_SRST_DSWE3_'+str(tiles)+'_v'+run_date
+    locs_srname_89_D3 = proj+'_site_LS89_C2_SRST_DSWE3_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
     locs_dataOut_89_D3 = (ee.batch.Export.table.toDrive(collection = locs_out_89_D3,
                                             description = locs_srname_89_D3,
                                             folder = proj_folder,
@@ -1630,16 +1595,53 @@ for e in extent:
     maximum_no_of_tasks(10, 120)
     #Send next task.                                        
     locs_dataOut_89_D3.start()
-    print('Completed Landsat 8, 9 DSWE 3 stack acquisitions for ' + e + ' configuration at tile ' + str(tiles))
+    print('Completed Landsat 8, 9 DSWE 3 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
   
-  else: print('Not configured to acquire DSWE 3 stack for Landsat 8,9 for ' + e + ' configuration')
+  else: print('Not configured to acquire DSWE 3 stack for Landsat 8,9 for sites')
+
+
+def process_dataframe_in_chunks(df, chunk_size=5000):
+    """
+    Process a DataFrame in chunks of specified size.
+    
+    Args:
+    df (pandas.DataFrame): The input DataFrame
+    chunk_size (int): The number of rows in each chunk (default: 5000)
+    
+    Returns:
+    list: A list of results from processing each chunk
+    """
+    results = []
+    
+    # Calculate the number of chunks
+    num_chunks = len(df) // chunk_size + (1 if len(df) % chunk_size != 0 else 0)
+    
+    for i in range(num_chunks):
+        # Calculate start and end indices for the current chunk
+        start_idx = i * chunk_size
+        end_idx = min((i + 1) * chunk_size, len(df))
+        
+        # Subset the DataFrame
+        df_subset = df.iloc[start_idx:end_idx]
+        
+        # Process the subset and store the result
+        result = process_subset(df_subset, i)
+        results.append(result)
+        
+        print(f"Processed chunk {i+1}/{num_chunks}")
+    
+    return ()
+
+# and then actualy process the chunks!
+process_dataframe_in_chunks(filtered_locs)
+
+
 
 
 ##############################################
 ##---- LANDSAT 457 METADATA ACQUISITION ----##
 ##############################################
 
-print('Starting Landsat 4, 5, 7 metadata acquisition for tile ' +str(tiles))
 
 ## get metadata ##
 meta_srname_457 = proj+'_metadata_LS457_C2_'+str(tiles)+'_v'+run_date
@@ -1660,7 +1662,6 @@ print('Completed Landsat 4, 5, 7 metadata acquisition for tile ' + str(tiles))
 ##---- LANDSAT 89 METADATA ACQUISITION ----##
 #############################################
 
-print('Starting Landsat 8, 9 metadata acquisition for tile ' +str(tiles))
 
 ## get metadata ##
 meta_srname_89 = proj+'_metadata_LS89_C2_'+str(tiles)+'_v'+run_date

@@ -89,9 +89,8 @@ p5_siteSR_stack <- list(
     name = p5_run_pekel,
     command = {
       p5_save_contained_sites
-      run_pekel_per_tile(WRS_tile = p5_WRS_tiles)
+      source_python("5_siteSR_stack/py/runPekelOccurrence.py")
     },
-    pattern = map(p5_WRS_tiles),
     packages = "reticulate"
   ),
   
@@ -123,13 +122,19 @@ p5_siteSR_stack <- list(
     name = p5_pekel_collated,
     command = {
       p5_pekel_download
-      files <- list.files(file.path("5_siteSR_stack/down/", p5_yml$run_date, "pekel"))
+      files <- list.files(file.path("5_siteSR_stack/down/", 
+                                    p5_yml$run_date, 
+                                    "pekel"), 
+                          full.names = TRUE)
       map(files, read_csv) %>% 
-        bind_rows
+        bind_rows %>% 
+        select(id, occurrence_med, occurrence_max, occurrence_min) %>% 
+        left_join(., p5_save_contained_sites)
     }
   ),
   
-  # filter for visible sites, here visible if Pekel max occurrence within AOI is > 80%
+  # filter for visible sites, here visible if Pekel max occurrence within buffer 
+  # of site is > 80%
   tar_target(
     name = p5_visible_sites,
     command = {
@@ -146,7 +151,7 @@ p5_siteSR_stack <- list(
     name = p5_eeRun,
     command = {
       p5_visible_sites
-      run_GEE_per_tile(tile = p5_WRS_tiles)
+      run_GEE_per_tile(WRS_tile = p5_WRS_tiles)
     },
     pattern = map(p5_WRS_tiles),
     packages = "reticulate"

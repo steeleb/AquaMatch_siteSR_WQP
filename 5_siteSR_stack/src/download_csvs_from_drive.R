@@ -33,7 +33,15 @@ download_csvs_from_drive <- function(drive_folder_name,
       stop()
     }
   }
-  
+  # check for version_identifier subfolder and download_type subfolder
+  if (!dir.exists(file.path("5_siteSR_stack/down/",
+                            version_identifier,
+                            download_type))) {
+    dir.create(file.path("5_siteSR_stack/down/",
+                         version_identifier,
+                         download_type),
+               recursive = TRUE)
+  }
   walk2(.x = dribble_files$id,
         .y = dribble_files$name, 
         .f = function(.x, .y) {
