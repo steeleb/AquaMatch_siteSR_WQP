@@ -50,7 +50,7 @@ R file 'data_acquisition/src/py/pySetup.R'. This will take a few minutes if you
 haven't yet run the python setup script while it creates a virtual environment.
 
 ```{r}
-source('6_siteSR_stack/py/pySetup.R')
+source('src/py/pySetup.R')
 ```
 
 ### Authenticate your instance of GEE

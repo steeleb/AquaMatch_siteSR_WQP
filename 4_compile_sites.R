@@ -103,9 +103,11 @@ p4_compile_sites <- list(
     name = p4_sites_with_NHD_attribution,
     command = {
       collated_sites <- reduce(list(p4_add_HUC8, p4_add_NHD_waterbody_info, p4_add_NHD_flowline_info),
-                               full_join)
+                               full_join) %>% 
+        st_drop_geometry() %>% 
+        rowid_to_column()
       # write this file for use in yml/ee workflow
-      write_csv(collated_sites %>% st_drop_geometry(), "out/collated_sites.csv")
+      write_csv(collated_sites, "4_compile_sites/out/collated_sites.csv")
       collated_sites
     })
   
