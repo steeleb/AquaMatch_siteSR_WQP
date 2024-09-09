@@ -30,6 +30,7 @@ _targets/
 5_siteSR_stack/mid/*
 5_siteSR_stack/down/*
 5_siteSR_stack/run/*
+5_siteSR_stack/out/*
 
 # Python environment
 env/*
