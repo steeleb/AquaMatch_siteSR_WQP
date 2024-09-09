@@ -1,6 +1,7 @@
 #import modules
 import ee
 import os 
+import time
 from pandas import read_csv
 import numpy as np
 
@@ -19,16 +20,17 @@ def csv_to_eeFeat(df, proj):
   features=[]
   for i in range(df.shape[0]):
     x,y = df.Longitude.iloc[i],df.Latitude.iloc[i]
-    latlong =[x,y]
-    loc_properties = {'system:index':str(df.id.iloc[i]), 'id':str(df.id.iloc[i])}
-    g=ee.Geometry.Point(latlong, proj) 
+    latlong = [x,y]
+    loc_properties = ({'system:index':str(df.id.iloc[i]), 
+                      'id':str(df.id.iloc[i])})
+    g = ee.Geometry.Point(latlong, proj) 
     feature = ee.Feature(g, loc_properties)
     features.append(feature)
   return ee.FeatureCollection(features)
 
 
 # pull using AquaSat V1 code from MR
-def waterfunc(point):
+def get_occurrence(point):
   """ Function to buffer a point and pull summary statistics for Pekel water ocurrence
   
   Args:
@@ -37,8 +39,9 @@ def waterfunc(point):
   Returns:
     out: earth engine point feature with max, min, median summaries for Pekel occurrence
   """
-  # Define a buffer around each point
-  buff_point = point.buffer(buffer).geometry()
+  # Define a buffer around each point, buffer must be hardcoded here, for unknown
+  # reasons
+  buff_point = ee.Feature(point).buffer(200).geometry() 
   # Clip the pekel mask to this buffer
   pekclip = pekel.clip(buff_point)
   # Reduce the buffer to pekel min and max
@@ -46,11 +49,10 @@ def waterfunc(point):
   # Add another reducer to get the median pekel occurnce
   pekMed = pekclip.reduceRegion(ee.Reducer.median(), buff_point, 30)
   # Define the output features
-  out = (point.set({'max':pekMM.get('occurrence_max')})
-          .set({'min':pekMM.get('occurrence_min')})
-          .set({'med':pekMed.get('occurrence')}))
+  out = (point.set({'occurrence_max': pekMM.get('occurrence_max')})
+              .set({'occurrence_min': pekMM.get('occurrence_min')})
+              .set({'occurrence_med': pekMed.get('occurrence')}))
   return out
-
 
 
 def maximum_no_of_tasks(MaxNActive, waitingPeriod):
@@ -63,7 +65,7 @@ def maximum_no_of_tasks(MaxNActive, waitingPeriod):
   Returns:
       None.
   """
-  ##maintain a maximum number of active tasks
+  ## maintain a maximum number of active tasks
   ## initialize submitting jobs
   ts = list(ee.batch.Task.list())
   NActive = 0
@@ -100,14 +102,18 @@ proj_folder = yml['proj_folder'][0]
 run_date = yml['run_date'][0]
 
 # gee processing settings
-buffer = yml['site_buffer'][0]
+site_buffer = yml['site_buffer'][0]
 
 # get extent info
 extent = (yml['extent'][0]
   .split('+'))
 
 if 'site' in extent:
-  locations = read_csv('5_siteSR_stack/run/locs_with_WRS.csv', dtype = {"id": np.int32, "Latitude": np.float64, "Longitude": np.float64, "PR": str})
+  locations = (read_csv('5_siteSR_stack/run/locs_with_WRS.csv', 
+                        dtype = ({"id": np.int32, 
+                                  "Latitude": np.float64, 
+                                  "Longitude": np.float64, 
+                                  "WRSPR": str})))
   filtered_locs = locations[locations['WRSPR'] == tile]
   # convert locations to an eeFeatureCollection
   locs_feature = csv_to_eeFeat(filtered_locs, yml['location_crs'][0])
@@ -124,15 +130,18 @@ if 'site' in extent:
 pekel = (ee.Image("JRC/GSW1_4/GlobalSurfaceWater")
   .select("occurrence"))
 
-#Map this function over the 5000 or so created sites
-outdata = locsFeature.map(waterfunc)
+# Map this function over the 5000 or so created sites
+outdata = locs_feature.map(get_occurrence)
 #Define a data export 
 dataOut = (ee.batch.Export.table.toDrive(collection = outdata,
-              description = "Pekel_Visibility_" + str(tile),
-              folder = proj_folder,
-              fileFormat = 'csv')
-max_no_of_tasks(20, 60)
-#Send next task.
+                                        description = "Pekel_Visibility_" + str(tile),
+                                        folder = proj_folder,
+                                        fileFormat = 'csv'))
+
+# check for number of tasks running
+maximum_no_of_tasks(20, 60)
+
+# send next task if there isn't too much in the queue!
 dataOut.start()
 
 

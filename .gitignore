@@ -13,7 +13,7 @@
 # R Environment Variables
 .Renviron
 
-# Data
+# targets data
 _targets/
 
 # Ignore data file types
@@ -34,3 +34,6 @@ _targets/
 
 # Python environment
 env/*
+
+# Scratch files
+scratch/*

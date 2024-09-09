@@ -24,31 +24,24 @@ download_csvs_from_drive <- function(drive_folder_name,
     filter(grepl(".csv", name))
   # filter files for download types
   if (download_type == "stack") {
-    dribble_files <- dribble_files[grepl("version_identifier", dribble_files)]
+    dribble_files <- dribble_files[grepl("version_identifier", dribble_files$name), ]
   } else {
     if (download_type == "pekel") {
-      dribble_files <- dribble_files[grepl("pekel", dribble_files, ignore.case = T)]
+      dribble_files <- dribble_files[grepl("pekel", dribble_files$name, ignore.case = T), ]
     } else {
       print("Download type not recognized, make sure it is either 'stack' or 'pekel'.")
       stop()
     }
   }
-  # make sure version-specific directory exists, create it if not
-  if(!dir.exists(file.path("5_siteSR_stack/down/", 
-                           version_identifier, 
-                           download_type))) {
-    dir.create(file.path("5_siteSR_stack/down/", 
-                         version_identifier,
-                         download_type), recursive = TRUE)
-  }
+  
   walk2(.x = dribble_files$id,
         .y = dribble_files$name, 
         .f = function(.x, .y) {
           try(drive_download(file = .x,
-                         path = file.path("5_siteSR_stack/down/",
-                                          version_identifier,
-                                          download_type,
-                                          .y),
-                         overwrite = TRUE)) 
-          })
+                             path = file.path("5_siteSR_stack/down/",
+                                              version_identifier,
+                                              download_type,
+                                              .y),
+                             overwrite = TRUE)) 
+        })
 }
