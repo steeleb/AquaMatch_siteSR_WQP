@@ -1274,9 +1274,6 @@ bn457 = (["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B7",
 bns457 = (["Blue", "Green", "Red", "Nir", "Swir1", "Swir2", 
   "pixel_qa", "radsat_qa", "SurfaceTemp"])
   
-# rename bands  
-ls457 = ls457.select(bn457, bns457)
-
 
 #grab images and apply scaling factors
 l8 = (ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
@@ -1303,9 +1300,7 @@ bn89 = (["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6", "SR_B7",
 bns89 = (["Aerosol", "Blue", "Green", "Red", "Nir", "Swir1", "Swir2",
   "pixel_qa", "aerosol_qa", "radsat_qa", "SurfaceTemp"])
  
-# rename bands  
-ls89 = ls89.select(bn89, bns89)
- 
+
 
 ##########################################
 ##---- LANDSAT ACQUISITION          ----##
@@ -1335,7 +1330,7 @@ def process_subset(df_subset, chunk):
   ##---- LANDSAT 457 ACQUISITION      ----##
   ##########################################
   
-  ## process 457 stack
+  ## pre-process 457 stack
   #snip the ls data by the geometry of the location points    
   locs_stack_ls457 = (ls457
     .filterBounds(feat.geometry()) 
@@ -1440,6 +1435,7 @@ def process_subset(df_subset, chunk):
   ##---- LANDSAT 89 SITE ACQUISITION ----##
   #########################################
   
+  # pre-process the l89 stack
   # snip the ls data by the geometry of the location points    
   locs_stack_ls89 = (ls89
     .filterBounds(feat.geometry()) 
