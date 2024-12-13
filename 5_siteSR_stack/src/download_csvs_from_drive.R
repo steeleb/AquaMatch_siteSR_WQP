@@ -24,7 +24,7 @@ download_csvs_from_drive <- function(drive_folder_name,
     filter(grepl(".csv", name))
   # filter files for download types
   if (download_type == "stack") {
-    dribble_files <- dribble_files[grepl("version_identifier", dribble_files$name), ]
+    dribble_files <- dribble_files[grepl(version_identifier, dribble_files$name), ]
   } else {
     if (download_type == "pekel") {
       dribble_files <- dribble_files[grepl("pekel", dribble_files$name, ignore.case = T), ]

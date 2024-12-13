@@ -8,7 +8,7 @@ import numpy as np
 from functools import partial
 
 # LOAD ALL THE CUSTOM FUNCTIONS -----------------------------------------------
-# pull code begins on line 1222
+# pull code begins on line 1185
 
 def csv_to_eeFeat(df, proj):
   """Function to create an eeFeature from the location info
@@ -22,13 +22,14 @@ def csv_to_eeFeat(df, proj):
   """
   features=[]
   for i in range(df.shape[0]):
-    x,y = df.Longitude.iloc[i],df.Latitude.iloc[i]
+    x,y = df.Longitude[i],df.Latitude[i]
     latlong =[x,y]
-    loc_properties = {'system:index':str(df.id.iloc[i]), 'id':str(df.id.iloc[i])}
+    loc_properties = {'system:index':str(df.id[i]), 'id':str(df.id[i])}
     g=ee.Geometry.Point(latlong, proj) 
     feature = ee.Feature(g, loc_properties)
     features.append(feature)
-  return ee.FeatureCollection(features)
+  ee_object = ee.FeatureCollection(features)
+  return ee_object
 
 
 def apply_scale_factors(image):
@@ -301,7 +302,6 @@ def calc_hill_shadows(image, geo):
   return hillShadow
 
 
-## Remove geometries
 def remove_geo(image):
   """ Funciton to remove the geometry from an ee.Image
   
@@ -312,6 +312,7 @@ def remove_geo(image):
       ee.Image with the geometry removed
   """
   return image.setGeometry(None)
+
 
 def apply_fill_mask_457(image):
   """ mask any fill values (0) in scaled raster for Landsat 4, 5, 7
@@ -337,6 +338,7 @@ def apply_fill_mask_457(image):
     .selfMask()
     )
   return image.updateMask(fill_mask.eq(1))
+
 
 def apply_fill_mask_89(image):
   """ mask any fill values (0) in scaled raster for Landsat 8,9
@@ -489,6 +491,7 @@ def ref_pull_457_DSWE1(image, feat):
 
   Args:
       image: ee.Image of an ee.ImageCollection
+      feat: ee.FeatureGeometry of the buffered locations
 
   Returns:
       summaries for band data within any given geometry area where the DSWE value is 1
@@ -541,13 +544,11 @@ def ref_pull_457_DSWE1(image, feat):
     )
   
   pixOut = (image.select(['Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-                        'SurfaceTemp', 'temp_qa', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-                        'ST_EMSD', 'ST_TRAD', 'ST_URAD'],
+                        'SurfaceTemp'],
                         ['med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                        'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                        'med_emsd', 'med_trad', 'med_urad'])
-            .addBands(image.select(['SurfaceTemp', 'ST_CDIST'],
-                                    ['min_SurfaceTemp', 'min_cloud_dist']))
+                        'med_SurfaceTemp'])
+            .addBands(image.select(['SurfaceTemp'],
+                                    ['min_SurfaceTemp']))
             .addBands(image.select(['Blue', 'Green', 'Red', 
                                     'Nir', 'Swir1', 'Swir2', 'SurfaceTemp'],
                                   ['sd_Blue', 'sd_Green', 'sd_Red', 
@@ -558,11 +559,9 @@ def ref_pull_457_DSWE1(image, feat):
                                   ['mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
                                   'mean_Swir1', 'mean_Swir2', 
                                   'mean_SurfaceTemp']))
-            .addBands(image.select(['SurfaceTemp']))
-            .updateMask(d.eq(1)) # only high confidence water
-            .updateMask(hs.eq(1)) # only illuminated pixels
-            .updateMask(f.eq(0))
-            .updateMask(r.eq(1))
+            # mask the image
+            .updateMask(dswe1.eq(1)) # high confidence water mask
+            # add bands back in for QA (prior to masking of dswe/hs/f/r)
             .addBands(gt0) 
             .addBands(dswe1)
             .addBands(dswe3)
@@ -573,18 +572,14 @@ def ref_pull_457_DSWE1(image, feat):
             ) 
   combinedReducer = (ee.Reducer.median().unweighted()
       .forEachBand(pixOut.select(['med_Blue', 'med_Green', 'med_Red', 
-            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp', 
-            'med_temp_qa','med_atran', 'med_drad', 'med_emis',
-            'med_emsd', 'med_trad', 'med_urad']))
+            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp']))
     .combine(ee.Reducer.min().unweighted()
-      .forEachBand(pixOut.select(['min_SurfaceTemp', 'min_cloud_dist'])), sharedInputs = False)
+      .forEachBand(pixOut.select(['min_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.stdDev().unweighted()
       .forEachBand(pixOut.select(['sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
       .forEachBand(pixOut.select(['mean_Blue', 'mean_Green', 'mean_Red', 
               'mean_Nir', 'mean_Swir1', 'mean_Swir2', 'mean_SurfaceTemp'])), sharedInputs = False)
-    .combine(ee.Reducer.kurtosis().unweighted()
-      .forEachBand(pixOut.select(['SurfaceTemp'])), outputPrefix = 'kurt_', sharedInputs = False)
     .combine(ee.Reducer.count().unweighted()
       .forEachBand(pixOut.select(['dswe_gt0', 'dswe1', 'dswe3', 'dswe1a'])), outputPrefix = 'pCount_', sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
@@ -606,6 +601,7 @@ def ref_pull_457_DSWE1a(image, feat):
 
   Args:
       image: ee.Image of an ee.ImageCollection
+      feat: ee.FeatureGeometry of the buffered locations
 
   Returns:
       summaries for band data within any given geometry area where the DSWE value is 1 or where
@@ -659,13 +655,11 @@ def ref_pull_457_DSWE1a(image, feat):
     )
   
   pixOut = (image.select(['Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-                        'SurfaceTemp', 'temp_qa', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-                        'ST_EMSD', 'ST_TRAD', 'ST_URAD'],
+                        'SurfaceTemp'],
                         ['med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                        'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                        'med_emsd', 'med_trad', 'med_urad'])
-            .addBands(image.select(['SurfaceTemp', 'ST_CDIST'],
-                                    ['min_SurfaceTemp', 'min_cloud_dist']))
+                        'med_SurfaceTemp'])
+            .addBands(image.select(['SurfaceTemp'],
+                                    ['min_SurfaceTemp']))
             .addBands(image.select(['Blue', 'Green', 'Red', 
                                     'Nir', 'Swir1', 'Swir2', 'SurfaceTemp'],
                                   ['sd_Blue', 'sd_Green', 'sd_Red', 
@@ -676,11 +670,9 @@ def ref_pull_457_DSWE1a(image, feat):
                                   ['mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
                                   'mean_Swir1', 'mean_Swir2', 
                                   'mean_SurfaceTemp']))
-            .addBands(image.select(['SurfaceTemp']))
-            .updateMask(dswe1a.eq(1)) # mask for dswe1a
-            .updateMask(hs.eq(1)) # only illuminated pixels
-            .updateMask(f.eq(0))
-            .updateMask(r.eq(1))
+            # mask the image
+            .updateMask(dswe1a.eq(1)) # dswe1 with algal mask
+            # add bands back in for QA (prior to masking of dswe/hs/f/r)
             .addBands(gt0) 
             .addBands(dswe1)
             .addBands(dswe3)
@@ -691,18 +683,14 @@ def ref_pull_457_DSWE1a(image, feat):
             ) 
   combinedReducer = (ee.Reducer.median().unweighted()
       .forEachBand(pixOut.select(['med_Blue', 'med_Green', 'med_Red', 
-            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp', 
-            'med_temp_qa','med_atran', 'med_drad', 'med_emis',
-            'med_emsd', 'med_trad', 'med_urad']))
+            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp']))
     .combine(ee.Reducer.min().unweighted()
-      .forEachBand(pixOut.select(['min_SurfaceTemp', 'min_cloud_dist'])), sharedInputs = False)
+      .forEachBand(pixOut.select(['min_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.stdDev().unweighted()
       .forEachBand(pixOut.select(['sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
       .forEachBand(pixOut.select(['mean_Blue', 'mean_Green', 'mean_Red', 
               'mean_Nir', 'mean_Swir1', 'mean_Swir2', 'mean_SurfaceTemp'])), sharedInputs = False)
-    .combine(ee.Reducer.kurtosis().unweighted()
-      .forEachBand(pixOut.select(['SurfaceTemp'])), outputPrefix = 'kurt_', sharedInputs = False)
     .combine(ee.Reducer.count().unweighted()
       .forEachBand(pixOut.select(['dswe_gt0', 'dswe1', 'dswe3', 'dswe1a'])), outputPrefix = 'pCount_', sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
@@ -723,6 +711,7 @@ def ref_pull_457_DSWE3(image, feat):
 
   Args:
       image: ee.Image of an ee.ImageCollection
+      feat: ee.FeatureGeometry of the buffered locations
 
   Returns:
       summaries for band data within any given geometry area where the DSWE value is 3
@@ -775,28 +764,24 @@ def ref_pull_457_DSWE3(image, feat):
     )
   
   pixOut = (image.select(['Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-                      'SurfaceTemp', 'temp_qa', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-                      'ST_EMSD', 'ST_TRAD', 'ST_URAD'],
+                      'SurfaceTemp'],
                       ['med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                      'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                      'med_emsd', 'med_trad', 'med_urad'])
-          .addBands(image.select(['SurfaceTemp', 'ST_CDIST'],
-                                  ['min_SurfaceTemp', 'min_cloud_dist']))
+                      'med_SurfaceTemp'])
+          .addBands(image.select(['SurfaceTemp'],
+                                  ['min_SurfaceTemp']))
           .addBands(image.select(['Blue', 'Green', 'Red', 
                                   'Nir', 'Swir1', 'Swir2', 'SurfaceTemp'],
                                 ['sd_Blue', 'sd_Green', 'sd_Red', 
                                 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp']))
-            .addBands(image.select(['Blue', 'Green', 'Red', 'Nir', 
-                                    'Swir1', 'Swir2', 
-                                    'SurfaceTemp'],
-                                  ['mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
-                                  'mean_Swir1', 'mean_Swir2', 
-                                  'mean_SurfaceTemp']))
-          .addBands(image.select(['SurfaceTemp']))
-          .updateMask(d.eq(3)) # only vegetated water
-          .updateMask(hs.eq(1)) # only illuminated pixels
-          .updateMask(f.eq(0))
-          .updateMask(r.eq(1))
+          .addBands(image.select(['Blue', 'Green', 'Red', 'Nir', 
+                                  'Swir1', 'Swir2', 
+                                  'SurfaceTemp'],
+                                ['mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
+                                'mean_Swir1', 'mean_Swir2', 
+                                'mean_SurfaceTemp']))
+          # mask the image
+          .updateMask(dswe3.eq(1)) # vegetated water mask
+          # add bands back in for QA (prior to masking of dswe/hs/f/r)
           .addBands(gt0) 
           .addBands(dswe1)
           .addBands(dswe3)
@@ -807,18 +792,14 @@ def ref_pull_457_DSWE3(image, feat):
           ) 
   combinedReducer = (ee.Reducer.median().unweighted()
       .forEachBand(pixOut.select(['med_Blue', 'med_Green', 'med_Red', 
-            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp', 
-            'med_temp_qa','med_atran', 'med_drad', 'med_emis',
-            'med_emsd', 'med_trad', 'med_urad']))
+            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp']))
     .combine(ee.Reducer.min().unweighted()
-      .forEachBand(pixOut.select(['min_SurfaceTemp', 'min_cloud_dist'])), sharedInputs = False)
+      .forEachBand(pixOut.select(['min_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.stdDev().unweighted()
       .forEachBand(pixOut.select(['sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
       .forEachBand(pixOut.select(['mean_Blue', 'mean_Green', 'mean_Red', 
               'mean_Nir', 'mean_Swir1', 'mean_Swir2', 'mean_SurfaceTemp'])), sharedInputs = False)
-    .combine(ee.Reducer.kurtosis().unweighted()
-      .forEachBand(pixOut.select(['SurfaceTemp'])), outputPrefix = 'kurt_', sharedInputs = False)
     .combine(ee.Reducer.count().unweighted()
       .forEachBand(pixOut.select(['dswe_gt0', 'dswe1', 'dswe3', 'dswe1a'])), outputPrefix = 'pCount_', sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
@@ -839,6 +820,7 @@ def ref_pull_89_DSWE1(image, feat):
 
   Args:
       image: ee.Image of an ee.ImageCollection
+      feat: ee.FeatureGeometry of the buffered locations
 
   Returns:
       summaries for band data within any given geometry area where the DSWE value is 1
@@ -889,16 +871,14 @@ def ref_pull_89_DSWE1(image, feat):
     .updateMask(hs.eq(1))
     .updateMask(f.eq(0))
     .updateMask(r.eq(1))
-    .selfMask()
+.selfMask()
     )
   pixOut = (image.select(['Aerosol', 'Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-                      'SurfaceTemp', 'temp_qa', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-                      'ST_EMSD', 'ST_TRAD', 'ST_URAD'],
+                      'SurfaceTemp'],
                       ['med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                      'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                      'med_emsd', 'med_trad', 'med_urad'])
-          .addBands(image.select(['SurfaceTemp', 'ST_CDIST'],
-                                  ['min_SurfaceTemp', 'min_cloud_dist']))
+                      'med_SurfaceTemp'])
+          .addBands(image.select(['SurfaceTemp'],
+                                  ['min_SurfaceTemp']))
           .addBands(image.select(['Aerosol', 'Blue', 'Green', 'Red', 
                                   'Nir', 'Swir1', 'Swir2', 'SurfaceTemp'],
                                 ['sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 
@@ -909,11 +889,9 @@ def ref_pull_89_DSWE1(image, feat):
                                 ['mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
                                 'mean_Swir1', 'mean_Swir2', 
                                 'mean_SurfaceTemp']))
-          .addBands(image.select(['SurfaceTemp']))
-          .updateMask(d.eq(1)) # only high confidence water
-          .updateMask(hs.eq(1)) # only illuminated pixels
-          .updateMask(f.eq(0))
-          .updateMask(r.eq(1))
+          # mask the image
+          .updateMask(dswe1.eq(1)) # high confidence water mask
+          # add bands back in for QA (prior to masking of dswe/hs/f/r)
           .addBands(gt0) 
           .addBands(dswe1)
           .addBands(dswe3)
@@ -924,18 +902,14 @@ def ref_pull_89_DSWE1(image, feat):
           ) 
   combinedReducer = (ee.Reducer.median().unweighted()
       .forEachBand(pixOut.select(['med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 
-            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp', 
-            'med_temp_qa','med_atran', 'med_drad', 'med_emis',
-            'med_emsd', 'med_trad', 'med_urad']))
+            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp']))
     .combine(ee.Reducer.min().unweighted()
-      .forEachBand(pixOut.select(['min_SurfaceTemp', 'min_cloud_dist'])), sharedInputs = False)
+      .forEachBand(pixOut.select(['min_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.stdDev().unweighted()
       .forEachBand(pixOut.select(['sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
       .forEachBand(pixOut.select(['mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 
               'mean_Nir', 'mean_Swir1', 'mean_Swir2', 'mean_SurfaceTemp'])), sharedInputs = False)
-    .combine(ee.Reducer.kurtosis().unweighted()
-      .forEachBand(pixOut.select(['SurfaceTemp'])), outputPrefix = 'kurt_', sharedInputs = False)
     .combine(ee.Reducer.count().unweighted()
       .forEachBand(pixOut.select(['dswe_gt0', 'dswe1', 'dswe3', 'dswe1a'])), outputPrefix = 'pCount_', sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
@@ -957,6 +931,7 @@ def ref_pull_89_DSWE1a(image, feat):
 
   Args:
       image: ee.Image of an ee.ImageCollection
+      feat: ee.FeatureGeometry of the buffered locations
 
   Returns:
       summaries for band data within any given geometry area where the DSWE value is 1 or the algal 
@@ -1012,13 +987,11 @@ def ref_pull_89_DSWE1a(image, feat):
     .selfMask()
     )
   pixOut = (image.select(['Aerosol', 'Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-                      'SurfaceTemp', 'temp_qa', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-                      'ST_EMSD', 'ST_TRAD', 'ST_URAD'],
+                      'SurfaceTemp'],
                       ['med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                      'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                      'med_emsd', 'med_trad', 'med_urad'])
-          .addBands(image.select(['SurfaceTemp', 'ST_CDIST'],
-                                  ['min_SurfaceTemp', 'min_cloud_dist']))
+                      'med_SurfaceTemp'])
+          .addBands(image.select(['SurfaceTemp'],
+                                  ['min_SurfaceTemp']))
           .addBands(image.select(['Aerosol', 'Blue', 'Green', 'Red', 
                                   'Nir', 'Swir1', 'Swir2', 'SurfaceTemp'],
                                 ['sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 
@@ -1029,11 +1002,9 @@ def ref_pull_89_DSWE1a(image, feat):
                                 ['mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
                                 'mean_Swir1', 'mean_Swir2', 
                                 'mean_SurfaceTemp']))
-          .addBands(image.select(['SurfaceTemp']))
-          .updateMask(dswe1a.eq(1)) # only algal mask
-          .updateMask(hs.eq(1)) # only illuminated pixels
-          .updateMask(f.eq(0))
-          .updateMask(r.eq(1))
+          # mask the image
+          .updateMask(dswe1a.eq(1)) # high confidence water + algal mask 
+          # add bands back in for QA (prior to masking of dswe/hs/f/r)
           .addBands(gt0) 
           .addBands(dswe1)
           .addBands(dswe3)
@@ -1044,18 +1015,14 @@ def ref_pull_89_DSWE1a(image, feat):
           ) 
   combinedReducer = (ee.Reducer.median().unweighted()
       .forEachBand(pixOut.select(['med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 
-            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp', 
-            'med_temp_qa','med_atran', 'med_drad', 'med_emis',
-            'med_emsd', 'med_trad', 'med_urad']))
+            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp']))
     .combine(ee.Reducer.min().unweighted()
-      .forEachBand(pixOut.select(['min_SurfaceTemp', 'min_cloud_dist'])), sharedInputs = False)
+      .forEachBand(pixOut.select(['min_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.stdDev().unweighted()
       .forEachBand(pixOut.select(['sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
       .forEachBand(pixOut.select(['mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 
               'mean_Nir', 'mean_Swir1', 'mean_Swir2', 'mean_SurfaceTemp'])), sharedInputs = False)
-    .combine(ee.Reducer.kurtosis().unweighted()
-      .forEachBand(pixOut.select(['SurfaceTemp'])), outputPrefix = 'kurt_', sharedInputs = False)
     .combine(ee.Reducer.count().unweighted()
       .forEachBand(pixOut.select(['dswe_gt0', 'dswe1', 'dswe3', 'dswe1a'])), outputPrefix = 'pCount_', sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
@@ -1077,6 +1044,7 @@ def ref_pull_89_DSWE3(image, feat):
 
   Args:
       image: ee.Image of an ee.ImageCollection
+      feat: ee.FeatureGeometry of the buffered locations
 
   Returns:
       summaries for band data within any given geometry area where the DSWE value is 3
@@ -1135,13 +1103,11 @@ def ref_pull_89_DSWE3(image, feat):
   #calculate hillshadow
   hs = calc_hill_shadows(image, wrs.geometry()).select('hillShadow')
   pixOut = (image.select(['Aerosol', 'Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-                      'SurfaceTemp', 'temp_qa', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-                      'ST_EMSD', 'ST_TRAD', 'ST_URAD'],
+                      'SurfaceTemp'],
                       ['med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                      'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                      'med_emsd', 'med_trad', 'med_urad'])
-          .addBands(image.select(['SurfaceTemp', 'ST_CDIST'],
-                                  ['min_SurfaceTemp', 'min_cloud_dist']))
+                      'med_SurfaceTemp'])
+          .addBands(image.select(['SurfaceTemp'],
+                                  ['min_SurfaceTemp']))
           .addBands(image.select(['Aerosol', 'Blue', 'Green', 'Red', 
                                   'Nir', 'Swir1', 'Swir2', 'SurfaceTemp'],
                                 ['sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 
@@ -1152,11 +1118,9 @@ def ref_pull_89_DSWE3(image, feat):
                                 ['mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 
                                 'mean_Swir1', 'mean_Swir2', 
                                 'mean_SurfaceTemp']))
-          .addBands(image.select(['SurfaceTemp']))
-          .updateMask(d.eq(3)) # only vegetated water
-          .updateMask(hs.eq(1)) # only illuminated pixels
-          .updateMask(f.eq(0))
-          .updateMask(r.eq(1))
+          # mask image
+          .updateMask(dswe3.eq(1)) # dswe3 mask
+          # add bands back in for QA (prior to masking of dswe/hs/f/r)
           .addBands(gt0) 
           .addBands(dswe1)
           .addBands(dswe3)
@@ -1167,18 +1131,14 @@ def ref_pull_89_DSWE3(image, feat):
           ) 
   combinedReducer = (ee.Reducer.median().unweighted()
       .forEachBand(pixOut.select(['med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 
-            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp', 
-            'med_temp_qa','med_atran', 'med_drad', 'med_emis',
-            'med_emsd', 'med_trad', 'med_urad']))
+            'med_Nir', 'med_Swir1', 'med_Swir2', 'med_SurfaceTemp']))
     .combine(ee.Reducer.min().unweighted()
-      .forEachBand(pixOut.select(['min_SurfaceTemp', 'min_cloud_dist'])), sharedInputs = False)
+      .forEachBand(pixOut.select(['min_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.stdDev().unweighted()
       .forEachBand(pixOut.select(['sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp'])), sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
       .forEachBand(pixOut.select(['mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 
               'mean_Nir', 'mean_Swir1', 'mean_Swir2', 'mean_SurfaceTemp'])), sharedInputs = False)
-    .combine(ee.Reducer.kurtosis().unweighted()
-      .forEachBand(pixOut.select(['SurfaceTemp'])), outputPrefix = 'kurt_', sharedInputs = False)
     .combine(ee.Reducer.count().unweighted()
       .forEachBand(pixOut.select(['dswe_gt0', 'dswe1', 'dswe3', 'dswe1a'])), outputPrefix = 'pCount_', sharedInputs = False)
     .combine(ee.Reducer.mean().unweighted()
@@ -1212,13 +1172,20 @@ def maximum_no_of_tasks(MaxNActive, waitingPeriod):
   ## wait if the number of current active tasks reach the maximum number
   ## defined in MaxNActive
   while (NActive >= MaxNActive):
-    time.sleep(waitingPeriod) # if reach or over maximum no. of active tasks, wait for 2min and check again
+    # if reach or over maximum no. of active tasks, wait for a certain amount 
+    # of time ('waitingPeriod') and check again
+    time.sleep(waitingPeriod) 
     ts = list(ee.batch.Task.list())
     NActive = 0
     for task in ts:
       if ('RUNNING' in str(task) or 'READY' in str(task)):
         NActive += 1
   return()
+
+
+##############################################
+##---- IMPORT CONFIG VARIABLES          ----##
+##############################################
 
 
 # get locations and yml from data folder
@@ -1276,89 +1243,97 @@ wrs_path = int(tiles[:3])
 wrs_row = int(tiles[-3:])
 
 #grab images and apply scaling factors
-l7 = (ee.ImageCollection('LANDSAT/LE07/C02/T1_L2')
-    .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
+l7 = (ee.ImageCollection("LANDSAT/LE07/C02/T1_L2")
+    .filter(ee.Filter.eq("WRS_PATH", w_p))
+    .filter(ee.Filter.eq("WRS_ROW", w_r))
+    .filter(ee.Filter.lt("CLOUD_COVER", ee.Number.parse(str(cloud_thresh))))
     .filterDate(yml_start, yml_end)
     .filterDate('1999-05-28', '2019-12-31') # for valid dates
-    )
-l5 = (ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
-    .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
-    .filterDate(yml_start, yml_end))
-l4 = (ee.ImageCollection('LANDSAT/LT04/C02/T1_L2')
-    .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
-    .filterDate(yml_start, yml_end))
+    .map(apply_scale_factors))
+l5 = (ee.ImageCollection("LANDSAT/LT05/C02/T1_L2")
+    .filter(ee.Filter.eq("WRS_PATH", w_p))
+    .filter(ee.Filter.eq("WRS_ROW", w_r))
+    .filter(ee.Filter.lt("CLOUD_COVER", ee.Number.parse(str(cloud_thresh))))
+    .filterDate(yml_start, yml_end)
+    .map(apply_scale_factors))
+l4 = (ee.ImageCollection("LANDSAT/LT04/C02/T1_L2")
+    .filter(ee.Filter.eq("WRS_PATH", w_p))
+    .filter(ee.Filter.eq("WRS_ROW", w_r))
+    .filter(ee.Filter.lt("CLOUD_COVER", ee.Number.parse(str(cloud_thresh))))
+    .filterDate(yml_start, yml_end)
+    .map(apply_scale_factors))
     
 # merge collections by image processing groups
 ls457 = ee.ImageCollection(l4.merge(l5).merge(l7))
     
 # existing band names
-bn457 = (['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 
-  'QA_PIXEL', 'SR_CLOUD_QA', 'QA_RADSAT', 'ST_B6', 
-  'ST_QA', 'ST_CDIST', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-  'ST_EMSD', 'ST_TRAD', 'ST_URAD'])
+bn457 = (["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B7", 
+  "QA_PIXEL", "QA_RADSAT", "ST_B6"])
   
 # new band names
-bns457 = (['Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2', 
-  'pixel_qa', 'cloud_qa', 'radsat_qa', 'SurfaceTemp', 
-  'temp_qa', 'ST_CDIST', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-  'ST_EMSD', 'ST_TRAD', 'ST_URAD'])
+bns457 = (["Blue", "Green", "Red", "Nir", "Swir1", "Swir2", 
+  "pixel_qa", "radsat_qa", "SurfaceTemp"])
   
+# rename bands  
+ls457 = ls457.select(bn457, bns457)
 
-#grab image stacks
-l8 = (ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
-    .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
-    .filterDate(yml_start, yml_end))
-l9 = (ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')
-    .filter(ee.Filter.lt('CLOUD_COVER', ee.Number.parse(str(cloud_thresh))))
-    .filter(ee.Filter.eq('WRS_PATH', wrs_path))
-    .filter(ee.Filter.eq('WRS_ROW', wrs_row))
-    .filterDate(yml_start, yml_end))
 
+#grab images and apply scaling factors
+l8 = (ee.ImageCollection("LANDSAT/LC08/C02/T1_L2")
+    .filter(ee.Filter.eq("WRS_PATH", w_p))
+    .filter(ee.Filter.eq("WRS_ROW", w_r))
+    .filter(ee.Filter.lt("CLOUD_COVER", ee.Number.parse(str(cloud_thresh))))
+    .filterDate(yml_start, yml_end)
+    .map(apply_scale_factors))
+l9 = (ee.ImageCollection("LANDSAT/LC09/C02/T1_L2")
+    .filter(ee.Filter.eq("WRS_PATH", w_p))
+    .filter(ee.Filter.eq("WRS_ROW", w_r))
+    .filter(ee.Filter.lt("CLOUD_COVER", ee.Number.parse(str(cloud_thresh))))
+    .filterDate(yml_start, yml_end)
+    .map(apply_scale_factors))
 
 # merge collections by image processing groups
 ls89 = ee.ImageCollection(l8.merge(l9))
     
 # existing band names
-bn89 = (['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7', 
-  'QA_PIXEL', 'SR_QA_AEROSOL', 'QA_RADSAT', 'ST_B10', 
-  'ST_QA', 'ST_CDIST', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-  'ST_EMSD', 'ST_TRAD', 'ST_URAD'])
+bn89 = (["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6", "SR_B7", 
+  "QA_PIXEL", "SR_QA_AEROSOL", "QA_RADSAT", "ST_B10"])
   
 # new band names
-bns89 = (['Aerosol','Blue', 'Green', 'Red', 'Nir', 'Swir1', 'Swir2',
-  'pixel_qa', 'aerosol_qa', 'radsat_qa', 'SurfaceTemp', 
-  'temp_qa', 'ST_CDIST', 'ST_ATRAN', 'ST_DRAD', 'ST_EMIS',
-  'ST_EMSD', 'ST_TRAD', 'ST_URAD'])
+bns89 = (["Aerosol", "Blue", "Green", "Red", "Nir", "Swir1", "Swir2",
+  "pixel_qa", "aerosol_qa", "radsat_qa", "SurfaceTemp"])
+ 
+# rename bands  
+ls89 = ls89.select(bn89, bns89)
  
 
 ##########################################
-##---- LANDSAT 457 ACQUISITION      ----##
+##---- LANDSAT ACQUISITION          ----##
 ##########################################
 
-# Map the pull function over the 5000 or so created sites, if needed
+# Map the pull function over the 5000 or so created sites, as needed
 def process_subset(df_subset, chunk):
   """
   This function processes a subset of the DataFrame.
   Replace this with your actual processing function.
   """
   
+  # Check how many existing tasks are running and take a break of 120 secs if 
+  # it's more than 10, and keep checking to not overload the GEE server
+  maximum_no_of_tasks(10, 120)
+
   locs_feature = csv_to_eeFeat(df_subset, yml['location_crs'][0])
   
-  ## run the pull for LS457
   geo = wrs.geometry()
   
   ## get locs feature and buffer ##
   feat = (locs_feature
     .filterBounds(geo)
     .map(dp_buff))
+  
+  ##########################################
+  ##---- LANDSAT 457 ACQUISITION      ----##
+  ##########################################
   
   ## process 457 stack
   #snip the ls data by the geometry of the location points    
@@ -1382,21 +1357,16 @@ def process_subset(df_subset, chunk):
       locs_srname_457_D1 = proj+'_site_LS457_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_457_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_457_D1,
                                               description = locs_srname_457_D1,
-                                              folder = proj_folder,
+                                              folder = folder_version,
                                               fileFormat = 'csv',
                                               selectors = ['system:index',
                                               'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                              'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                              'med_emsd', 'med_trad', 'med_urad',
-                                              'min_SurfaceTemp', 'min_cloud_dist',
+                                              'med_SurfaceTemp', 'min_SurfaceTemp',
                                               'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                               'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                               'mean_SurfaceTemp',
-                                              'kurt_SurfaceTemp', 
                                               'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                               'prop_clouds','prop_hillShadow','mean_hillShade']))
-      #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-      maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_457_D1.start()
       print('Completed Landsat 4, 5, 7 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1405,21 +1375,16 @@ def process_subset(df_subset, chunk):
       locs_srname_457_D1a = proj+'_site_LS457_C2_SRST_DSWE1a_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_457_D1a = (ee.batch.Export.table.toDrive(collection = locs_out_457_D1a,
                                               description = locs_srname_457_D1a,
-                                              folder = proj_folder,
+                                              folder = folder_version,
                                               fileFormat = 'csv',
                                               selectors = ['system:index',
                                               'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                              'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                              'med_emsd', 'med_trad', 'med_urad',
-                                              'min_SurfaceTemp', 'min_cloud_dist',
+                                              'med_SurfaceTemp', 'min_SurfaceTemp',
                                               'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                               'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                               'mean_SurfaceTemp',
-                                              'kurt_SurfaceTemp', 
                                               'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                               'prop_clouds','prop_hillShadow','mean_hillShade']))
-      #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-      maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_457_D1a.start()
       print('Completed Landsat 4, 5, 7 DSWE 1a stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1431,21 +1396,16 @@ def process_subset(df_subset, chunk):
       locs_srname_457_D1 = proj+'_site_LS457_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_457_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_457_D1,
                                               description = locs_srname_457_D1,
-                                              folder = proj_folder,
+                                              folder = folder_version,
                                               fileFormat = 'csv',
                                               selectors = ['system:index',
                                               'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                              'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                              'med_emsd', 'med_trad', 'med_urad',
-                                              'min_SurfaceTemp', 'min_cloud_dist',
+                                              'med_SurfaceTemp', 'min_SurfaceTemp',
                                               'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                               'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                               'mean_SurfaceTemp',
-                                              'kurt_SurfaceTemp', 
                                               'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                               'prop_clouds','prop_hillShadow','mean_hillShade']))
-      #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-      maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_457_D1.start()
       print('Completed Landsat 4, 5, 7 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1460,21 +1420,16 @@ def process_subset(df_subset, chunk):
     locs_srname_457_D3 = proj+'_site_LS457_C2_SRST_DSWE3_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
     locs_dataOut_457_D3 = (ee.batch.Export.table.toDrive(collection = locs_out_457_D3,
                                             description = locs_srname_457_D3,
-                                            folder = proj_folder,
+                                            folder = folder_version,
                                             fileFormat = 'csv',
                                             selectors = ['system:index',
                                             'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                            'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                            'med_emsd', 'med_trad', 'med_urad',
-                                            'min_SurfaceTemp', 'min_cloud_dist',
+                                            'med_SurfaceTemp', 'min_SurfaceTemp',
                                             'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                             'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                             'mean_SurfaceTemp',
-                                            'kurt_SurfaceTemp', 
                                             'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                             'prop_clouds','prop_hillShadow','mean_hillShade']))
-    #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-    maximum_no_of_tasks(10, 120)
     #Send next task.                                        
     locs_dataOut_457_D3.start()
     print('Completed Landsat 4, 5, 7 DSWE 3 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1504,21 +1459,16 @@ def process_subset(df_subset, chunk):
       locs_srname_89_D1 = proj+'_site_LS89_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_89_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_89_D1,
                                               description = locs_srname_89_D1,
-                                              folder = proj_folder,
+                                              folder = folder_version,
                                               fileFormat = 'csv',
                                               selectors = ['system:index',
                                               'med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                              'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                              'med_emsd', 'med_trad', 'med_urad',
-                                              'min_SurfaceTemp', 'min_cloud_dist',
+                                              'med_SurfaceTemp', 'min_SurfaceTemp',
                                               'sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                               'mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                               'mean_SurfaceTemp',
-                                              'kurt_SurfaceTemp', 
                                               'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                               'prop_clouds','prop_hillShadow','mean_hillShade']))
-      #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-      maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_89_D1.start()
       print('Completed Landsat 8, 9 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1527,21 +1477,16 @@ def process_subset(df_subset, chunk):
       locs_srname_89_D1a = proj+'_site_LS89_C2_SRST_DSWE1a_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_89_D1a = (ee.batch.Export.table.toDrive(collection = locs_out_89_D1a,
                                               description = locs_srname_89_D1a,
-                                              folder = proj_folder,
+                                              folder = folder_version,
                                               fileFormat = 'csv',
                                               selectors = ['system:index',
                                               'med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                              'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                              'med_emsd', 'med_trad', 'med_urad',
-                                              'min_SurfaceTemp', 'min_cloud_dist',
+                                              'med_SurfaceTemp', 'min_SurfaceTemp',
                                               'sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                               'mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                               'mean_SurfaceTemp',
-                                              'kurt_SurfaceTemp', 
                                               'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                               'prop_clouds','prop_hillShadow','mean_hillShade']))
-      #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-      maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_89_D1a.start()
       print('Completed Landsat 8, 9 DSWE 1a stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1551,21 +1496,16 @@ def process_subset(df_subset, chunk):
       locs_srname_89_D1 = proj+'_site_LS89_C2_SRST_DSWE1_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
       locs_dataOut_89_D1 = (ee.batch.Export.table.toDrive(collection = locs_out_89_D1,
                                               description = locs_srname_89_D1,
-                                              folder = proj_folder,
+                                              folder = folder_version,
                                               fileFormat = 'csv',
                                               selectors = ['system:index',
                                               'med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                              'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                              'med_emsd', 'med_trad', 'med_urad',
-                                              'min_SurfaceTemp', 'min_cloud_dist',
+                                              'med_SurfaceTemp', 'min_SurfaceTemp',
                                               'sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                               'mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                               'mean_SurfaceTemp',
-                                              'kurt_SurfaceTemp', 
                                               'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                               'prop_clouds','prop_hillShadow','mean_hillShade']))
-      #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-      maximum_no_of_tasks(10, 120)
       #Send next task.                                        
       locs_dataOut_89_D1.start()
       print('Completed Landsat 8, 9 DSWE 1 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1578,21 +1518,16 @@ def process_subset(df_subset, chunk):
     locs_srname_89_D3 = proj+'_site_LS89_C2_SRST_DSWE3_'+str(tiles)+'_'+str(chunk)+'_v'+run_date
     locs_dataOut_89_D3 = (ee.batch.Export.table.toDrive(collection = locs_out_89_D3,
                                             description = locs_srname_89_D3,
-                                            folder = proj_folder,
+                                            folder = folder_version,
                                             fileFormat = 'csv',
                                             selectors = ['system:index',
                                             'med_Aerosol', 'med_Blue', 'med_Green', 'med_Red', 'med_Nir', 'med_Swir1', 'med_Swir2', 
-                                            'med_SurfaceTemp', 'med_temp_qa', 'med_atran', 'med_drad', 'med_emis',
-                                            'med_emsd', 'med_trad', 'med_urad',
-                                            'min_SurfaceTemp', 'min_cloud_dist',
+                                            'med_SurfaceTemp', 'min_SurfaceTemp',
                                             'sd_Aerosol', 'sd_Blue', 'sd_Green', 'sd_Red', 'sd_Nir', 'sd_Swir1', 'sd_Swir2', 'sd_SurfaceTemp',
                                             'mean_Aerosol', 'mean_Blue', 'mean_Green', 'mean_Red', 'mean_Nir', 'mean_Swir1', 'mean_Swir2', 
                                             'mean_SurfaceTemp',
-                                            'kurt_SurfaceTemp', 
                                             'pCount_dswe_gt0', 'pCount_dswe1', 'pCount_dswe3', 'pCount_dswe1a',
                                             'prop_clouds','prop_hillShadow','mean_hillShade']))
-    #Check how many existing tasks are running and take a break of 120 secs if it's >25 
-    maximum_no_of_tasks(10, 120)
     #Send next task.                                        
     locs_dataOut_89_D3.start()
     print('Completed Landsat 8, 9 DSWE 3 stack acquisitions for site configuration at tile ' + str(tiles) + ' chunk ' + str(chunk + 1))
@@ -1650,8 +1585,6 @@ meta_dataOut_457 = (ee.batch.Export.table.toDrive(collection = ls457,
                                         folder = proj_folder,
                                         fileFormat = 'csv'))
 
-#Check how many existing tasks are running and take a break of 120 secs if it's >25 
-maximum_no_of_tasks(10, 120)
 #Send next task.                                        
 meta_dataOut_457.start()
 
@@ -1670,8 +1603,6 @@ meta_dataOut_89 = (ee.batch.Export.table.toDrive(collection = ls89,
                                         folder = proj_folder,
                                         fileFormat = 'csv'))
 
-#Check how many existing tasks are running and take a break of 120 secs if it's >25 
-maximum_no_of_tasks(10, 120)
 #Send next task.                                        
 meta_dataOut_89.start()
 

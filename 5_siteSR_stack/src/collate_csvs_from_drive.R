@@ -13,14 +13,14 @@
 #' 
 collate_csvs_from_drive <- function(file_prefix, version_identifier) {
   # get the list of files in the `in` directory 
-  files <- list.files(file.path("6_siteSR_stack/down/",
+  files <- list.files(file.path("5_siteSR_stack/down/stack/",
                                 version_identifier),
                       pattern = file_prefix,
                       full.names = TRUE) 
   
   meta_files <- files[grepl("meta", files)]
   all_meta <- map_dfr(meta_files, read_csv) 
-  write_feather(all_meta, file.path("6_siteSR_stack/mid/",
+  write_feather(all_meta, file.path("5_siteSR_stack/mid/",
                                     paste0(file_prefix, "_collated_metadata_",
                                            version_identifier, ".feather")))
   
@@ -58,7 +58,7 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
                                           miss == "LC09" ~ "LANDSAT_9",
                                           TRUE ~ NA_character_))
              #save that mission's feather file
-             write_feather(df, file.path("6_siteSR_stack/mid/",
+             write_feather(df, file.path("5_siteSR_stack/mid/",
                                          paste0(file_prefix, 
                                                 "_collated_points_",
                                                 miss,
@@ -98,7 +98,7 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
                                           miss == "LC09" ~ "LANDSAT_9",
                                           TRUE ~ NA_character_))
              #save that mission's feather file
-             write_feather(df, file.path("6_siteSR_stack/mid/",
+             write_feather(df, file.path("5_siteSR_stack/mid/",
                                          paste0(file_prefix, 
                                                 "_collated_points_",
                                                 miss,
@@ -113,7 +113,7 @@ collate_csvs_from_drive <- function(file_prefix, version_identifier) {
   }
   
   # return the list of files from this process
-  list.files("6_siteSR_stack/mid/",
+  list.files("5_siteSR_stack/mid/",
              pattern = file_prefix,
              full.names = TRUE) %>% 
     #but make sure they are the specified version

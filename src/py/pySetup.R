@@ -14,8 +14,9 @@ tryCatch(use_condaenv(file.path(getwd(), 'env')),
            try(install_miniconda())
            #create a conda environment named 'mod_env' with the packages you need
            conda_create(envname = file.path(getwd(), 'env'))
-           conda_install(envname = 'env/', 
-                         packages = c('earthengine-api', 'pandas', 'fiona', 'pyreadr'))
+           conda_install(envname = file.path(getwd(), 'env'), 
+                         packages = c('earthengine-api', 'pandas', 'fiona', 'pyreadr',
+                                      'matplotlib', 'plotnine', 'scikit-learn', 'pyarrow'))
            # set the new python environment
            use_condaenv(file.path(getwd(), "env/"))
            print("conda environment created and activated")
