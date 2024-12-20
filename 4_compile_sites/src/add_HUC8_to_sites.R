@@ -10,21 +10,20 @@
 #' the `HUCEightDigitCode` column populated.
 #' 
 #' @returns a simple feature object with `HUCEightDigitCode` populated if the 
-#' sites are associated with a HUC8.
+#' sites are associated with a HUC8. Silently saves a file of sites that could
+#' not be resolved to `4_compile_sites/out/sites_unable_to_assign_HUC08.csv`
 #' 
 #' 
 add_HUC8_to_sites <- function(sites_without_HUC) {
   # for each site, get the HUC8 associated with it and assign that value to the
   # upstream dataset 
-  sites_without_HUC %>% 
+  HUC08_assigned <- sites_without_HUC %>% 
     rowid_to_column() %>% 
     split(f = .$rowid) %>% 
     map(.x = .,
         .f = ~ {
           tryCatch({
-            # we can use the nhdplusTools package to grab this, since WBD hasn't
-            # changed significantly over time and it's a bunch more efficient than
-            # a mapserver query for NHDPlusHR
+            # we can use the nhdplusTools package to grab this
             one_huc <- get_huc(.x, type = "huc08")
             .x$HUCEightDigitCode <- one_huc$huc8
             return(.x)
@@ -36,5 +35,13 @@ add_HUC8_to_sites <- function(sites_without_HUC) {
           }
           )}) %>%  
     bind_rows() %>% 
-    select(-rowid)
+    select(-rowid) %>% 
+    filter(!is.na(HUCEightDigitCode))
+  # make a list of the sites that couldn't be assigned
+  failed_to_assign <- sites_without_HUC %>% 
+    filter(!MonitoringLocationIdentifier %in% HUC08_assigned$MonitoringLocationIdentifier)
+  # save to file
+  write_csv(failed_to_assign, "4_compile_sites/out/sites_unable_to_assign_HUC08.csv")
+  # return assigned file
+  bind_rows(HUC08_assigned, failed_to_assign)
 }
