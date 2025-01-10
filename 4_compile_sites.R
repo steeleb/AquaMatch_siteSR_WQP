@@ -14,7 +14,8 @@ p4_compile_sites <- list(
     command = {
       directories = c("4_compile_sites/in/",
                       "4_compile_sites/mid/",
-                      "4_compile_sites/out/")
+                      "4_compile_sites/out/",
+                      "4_compile_sites/nhd/")
       walk(directories, function(dir) {
         if(!dir.exists(dir)){
           dir.create(dir)
@@ -76,8 +77,7 @@ p4_compile_sites <- list(
   ),
   
   # Create the unique HUCs to map over, but drop those where a HUC4 was not 
-  # able to be assigned, indicating that the point is not within the boundaries
-  # of the NHDPlusV2 - processing via HUC4s is twice as fast as HUC8s
+  # able to be assigned - processing via HUC4s is twice as fast as HUC8s
   tar_target(
     name = p4_HUC4_list,
     command = unique(str_sub(na.omit(p4_add_HUC8$HUCEightDigitCode), 1, 4)),
@@ -88,11 +88,9 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_add_NHD_waterbody_info,
     command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
-                                         huc4 = p4_HUC4_list,
-                                         buffer = 200) %>% 
-      bind_rows(),
+                                         huc4 = p4_HUC4_list),
     pattern = map(p4_HUC4_list),
-    packages = c("tidyverse", "sf", "arcgis", "rmapshaper")
+    packages = c("tidyverse", "sf", "nhdplusTools")
   ),
   
   # Calculate the closest flowline to each site by HUC4
@@ -120,12 +118,6 @@ p4_compile_sites <- list(
     },
     deployment = "main"
     )
-  
-  # todo: Will need to address HUCs that are not in NHDPlusHR here ...
-  # thoughts: grab huc8s and asses via that route? Make sure these aren't actually 
-  # out of the AOI? I think this is because it's maxing out the request at this 
-  # extent (I think the max number of objects to return using the MapServer is 2k?)
-  
   
 )
 
