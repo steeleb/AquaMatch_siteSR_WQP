@@ -84,40 +84,46 @@ p4_compile_sites <- list(
     deployment = "main"
   ),
   
-  # Get the waterbodies associated with each site by HUC4
+  # Get the waterbodies associated with each lake/reservoir site by HUC4
   tar_target(
     name = p4_add_NHD_waterbody_info,
     command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
                                          huc4 = p4_HUC4_list),
     pattern = map(p4_HUC4_list),
-    packages = c("tidyverse", "sf", "nhdplusTools")
+    packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
   ),
   
-  # Calculate the closest flowline to each site by HUC4
+  # Calculate the closest flowline to each river/stream site by HUC4
   tar_target(
     name = p4_add_NHD_flowline_info,
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
-                                        huc4 = p4_HUC4_list,
-                                        buffer = 200) %>% 
-      bind_rows(), 
+                                        huc4 = p4_HUC4_list), 
     pattern = map(p4_HUC4_list),
-    packages = c("tidyverse", "sf", "arcgis")
+    packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
   ),
+  
+  # try state download of hucs without processing (mid folder)
+  
+  # add flowline using waterbody
+  
+  # note, the collated files (waterbody and flowline) will NOT have the same
+  # number of rows as p4_add_HUC8 as we drop all but river/stream/lake/pond/reservoir
+  
   
   # And add that waterbody and flowline info to the unique sites with HUC info
   tar_target(
-    name = p4_sites_with_NHD_attribution,
+    name = p4_WQP_sites,
     command = {
-      collated_sites <- reduce(list(p4_add_HUC8, p4_add_NHD_waterbody_info, p4_add_NHD_flowline_info),
-                               full_join) %>% 
+      collated_sites <- rbind(p4_add_NHD_waterbody_info, 
+                              p4_add_NHD_flowline_info) %>% 
         st_drop_geometry() %>% 
-        rowid_to_column()
+        rowid_to_column("siteSR_id")
       # write this file for use in yml/ee workflow
-      write_csv(collated_sites, "4_compile_sites/out/collated_sites.csv")
+      write_csv(collated_sites, "4_compile_sites/out/p4_WQP_sites.csv")
       collated_sites
     },
     deployment = "main"
-    )
+  )
   
 )
 
