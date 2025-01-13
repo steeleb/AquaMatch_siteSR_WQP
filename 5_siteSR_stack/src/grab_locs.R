@@ -13,6 +13,12 @@
 grab_locs <- function(yaml) {
   if (grepl("site", yaml$extent)) {
     locs <- read_csv(file.path(yaml$data_dir, yaml$location_file))
+    if (yaml$site_filter) {
+      locs <- locs %>% 
+        filter(grepl("river|stream|lake|reservoir", 
+                     MonitoringLocationTypeName, 
+                     ignore.case = T))
+    }
     # store yaml info as objects
     lat <- yaml$latitude
     lon <- yaml$longitude
@@ -21,7 +27,7 @@ grab_locs <- function(yaml) {
     locs <- locs %>% 
       rename_with(~c("Latitude", "Longitude", "id"), any_of(c(lat, lon, id)))
     write_csv(locs, "5_siteSR_stack/run/locs.csv")
-    return(locs)
+    locs
   } else {
     message("Not configured to use site locations.")
   }

@@ -1,16 +1,16 @@
-#' @title Make list of WRS tiles to map over
+#' @title Make list of WRS pathrows to map over
 #' 
 #' @description
-#' Function to define the list of WRS2 tiles for branching
+#' Function to define the list of WRS2 pathrows for branching
 #' 
 #' @param detection_method optimal shapefile from get_WRS_detection()
 #' @param yaml contents of the yaml .csv file
 #' @param locs sf object of user-provided locations for Landsat acqusition
 #' 
-#' @returns list of WRS2 tiles, silently returns sites with WRS info
+#' @returns list of WRS2 pathrows, silently returns sites with WRS info
 #' 
 #' 
-get_WRS_tiles <- function(detection_method, yaml, locs) {
+get_WRS_pathrows <- function(detection_method, yaml, locs) {
   WRS <- read_sf("5_siteSR_stack/in/WRS2_descending.shp")
   if (detection_method == "site") {
     sf <- st_as_sf(locs, 

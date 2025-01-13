@@ -31,7 +31,8 @@ p5_siteSR_stack <- list(
       })
     },
     cue = tar_cue("always"),
-    priority = 1
+    priority = 1,
+    deployment = "main"
   ),
   
   # read and track the config file
@@ -40,58 +41,94 @@ p5_siteSR_stack <- list(
     command = yaml_file,
     read = read_yaml(!!.x),
     packages = "yaml",
-    cue = tar_cue("always")
+    cue = tar_cue("always"),
+    deployment = "main"
   ),
   
   # load, format, save yml as a csv, depends on config_file target
   tar_target(
     name = p5_yml,
-    command = format_yaml(yaml = p5_config_file)
+    command = format_yaml(yaml = p5_config_file),
+    deployment = "main"
+  ),
+  
+  # Check for GEE export subfolder, create if not present
+  tar_target(
+    name = p5_check_GEE_folder,
+    command = {
+      p0_check_drive_parent_folder
+      tryCatch({
+        drive_auth(p0_siteSR_config$google_email)
+        drive_ls(p5_yml$proj_folder)
+      }, error = function(e) {
+        # if the outpath doesn't exist, create it along with a "stable" subfolder
+        drive_mkdir(name = p5_yml$proj_folder,
+                    path = p0_siteSR_config$drive_project_folder)
+      })
+    },
+    packages = "googledrive",
+    cue = tar_cue("always"),
+    error = "stop",
+    priority = 1,
+    deployment = "main"
   ),
   
   # load, format, save locations, depends on p4_sites_with_NHD_attribution target
   tar_target(
     name = p5_locs,
     command = {
-      p4_sites_with_NHD_attribution
+      p4_WQP_site_NHD_info
       grab_locs(yaml = p5_yml)
-    }
+    },
+    deployment = "main"
   ),
   
-  # get WRS tiles
+  # get WRS pathrow
   tar_target(
-    name = p5_WRS_tiles,
-    command = get_WRS_tiles(detection_method = "site", 
+    name = p5_WRS_pathrows,
+    command = get_WRS_pathrows(detection_method = "site", 
                             yaml = p5_yml, 
                             locs = p5_locs),
-    packages = c("readr", "sf")
+    packages = c("readr", "sf"),
+    deployment = "main"
   ),
   
-  # check to see that all sites and buffers are completely contained by each tile
+  # check to see that all sites and buffers are completely contained by each pathrow
+  # and assign wrs path-rows for all sites based on configuration buffer.
   tar_target(
-    name = p5_sites_contained,
+    name = p5_add_WRS_to_site,
     command = {
-      check_for_containment(WRS_pathrow = p5_WRS_tiles,
+      check_for_containment(WRS_pathrow = p5_WRS_pathrows,
                             locations = p5_locs,
                             yaml = p5_yml)
     },
-    pattern = map(p5_WRS_tiles)
+    pattern = map(p5_WRS_pathrows)
   ),
   
-  # after pattern ran, save the file for use in Pekel run
+  # after pattern ran, make sure there is only one instance of each site, for 
+  # pekel, we don't need to run every contained site in every WRS pathrow, just need
+  # to use WRS pathrows as a map. 
   tar_target(
-    name = p5_save_contained_sites,
-    command = write_csv(p5_sites_contained, "5_siteSR_stack/run/locs_with_WRS.csv")
+    name = p5_sites_for_pekel,
+    command = {
+      one_PR_per_site <- p5_add_WRS_to_site %>% 
+        slice(1, .by = "id")
+      write_csv(one_PR_per_site, "5_siteSR_stack/run/locs_with_wrs_for_pekel.csv")
+      one_PR_per_site
+    },
+    deployment = "main"
   ),
   
-  # Run Pekel instance by WRS tile
+  # Run pekel pull - this is broken up by 5k sites in the script, so it takes
+  # a bit of time.
   tar_target(
     name = p5_run_pekel,
     command = {
-      p5_save_contained_sites
+      p5_sites_for_pekel
       source_python("5_siteSR_stack/py/runPekelOccurrence.py")
     },
-    packages = "reticulate"
+    packages = "reticulate",
+    deployment = "main"
   ),
   
   # wait for all earth engine tasks to be completed
@@ -101,8 +138,11 @@ p5_siteSR_stack <- list(
       p5_run_pekel
       source_python("5_siteSR_stack/py/wait_for_completion.py")
     },
-    packages = "reticulate"
+    packages = "reticulate",
+    deployment = "main"
   ),
+  
+  # get list of Pekel files
   
   # download Pekel files
   tar_target(
@@ -114,6 +154,7 @@ p5_siteSR_stack <- list(
                                version_identifier = p5_yml$run_date,
                                download_type = "pekel")
     },
+    # pattern = # list of pekel files
     packages = c("tidyverse", "googledrive")
   ),
   
@@ -146,14 +187,14 @@ p5_siteSR_stack <- list(
     }
   ),
   
-  # run the Landsat pull as function per tile
+  # run the Landsat pull as function per pathrow
   tar_target(
     name = p5_eeRun,
     command = {
       p5_visible_sites
-      run_GEE_per_tile(WRS_tile = p5_WRS_tiles)
+      run_GEE_per_pathrow(WRS_pathrow = p5_WRS_pathrows)
     },
-    pattern = map(p5_WRS_tiles),
+    pattern = map(p5_WRS_pathrows),
     packages = "reticulate"
   ),
   

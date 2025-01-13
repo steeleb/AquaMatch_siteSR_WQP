@@ -78,15 +78,11 @@ site_buffer = yml['site_buffer'][0]
 extent = (yml['extent'][0]
   .split('+'))
 
-locations = (pd.read_csv('5_siteSR_stack/run/locs_with_WRS.csv', 
+locations = (pd.read_csv('5_siteSR_stack/run/locs_with_wrs_for_pekel.csv', 
                         dtype = ({"id": np.int32, 
                                   "Latitude": np.float64, 
                                   "Longitude": np.float64, 
                                   "WRSPR": str})))
-
-# the locations file above actually has dupes from overlapping WRSPRs, so just
-# grab unique locs
-locations_unique = locations.drop_duplicates(subset = "id", keep = "first")
 
 ##############################################
 ##---- GET EE FEATURE COLLECTIONS       ----##
@@ -111,7 +107,7 @@ def get_occurrence(point):
   """
   # Define a buffer around each point, buffer must be hardcoded here, for unknown
   # reasons
-  buff_point = ee.Feature(point).buffer(200).geometry() 
+  buff_point = ee.Feature(point).buffer(site_buffer).geometry() 
   # Clip the pekel mask to this buffer
   pekclip = pekel.clip(buff_point)
   # Reduce the buffer to pekel min and max
@@ -182,4 +178,4 @@ def process_dataframe_in_chunks(df, chunk_size=5000):
     return ()
 
 # and then actualy process the chunks!
-process_dataframe_in_chunks(locations_unique)
+process_dataframe_in_chunks(locations)
