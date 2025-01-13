@@ -67,7 +67,7 @@ ee.Initialize(project = eeproj)
 
 # get EE/Google settings from yml file
 proj = yml['proj'][0]
-proj_folder = yml['proj_folder'][0]
+out_folder = "pekel_v" + yml['run_date'][0]
 
 run_date = yml['run_date'][0]
 
@@ -77,12 +77,20 @@ site_buffer = yml['site_buffer'][0]
 # get extent info
 extent = (yml['extent'][0]
   .split('+'))
+  
+# get current pathrow
+with open('5_siteSR_stack/run/current_pathrow.txt', 'r') as file:
+  pathrows = file.read()
 
+# read locations and filtere for this pathrow
 locations = (pd.read_csv('5_siteSR_stack/run/locs_with_wrs_for_pekel.csv', 
-                        dtype = ({"id": np.int32, 
-                                  "Latitude": np.float64, 
-                                  "Longitude": np.float64, 
-                                  "WRSPR": str})))
+                      dtype = ({"id": np.int32, 
+                                "Latitude": np.float64, 
+                                "Longitude": np.float64, 
+                                "WRSPR": str})))
+                                
+filtered_locs = locations[locations['WRSPR'] == pathrows]
+
 
 ##############################################
 ##---- GET EE FEATURE COLLECTIONS       ----##
@@ -107,7 +115,7 @@ def get_occurrence(point):
   """
   # Define a buffer around each point, buffer must be hardcoded here, for unknown
   # reasons
-  buff_point = ee.Feature(point).buffer(site_buffer).geometry() 
+  buff_point = ee.Feature(point).buffer(ee.Number.parse(str(site_buffer))).geometry() 
   # Clip the pekel mask to this buffer
   pekclip = pekel.clip(buff_point)
   # Reduce the buffer to pekel min and max
@@ -122,18 +130,19 @@ def get_occurrence(point):
 
 
 # Map the get_occurrence function over the 5000 or so created sites
-def process_subset(df_subset, chunk):
+def process_subset(df_subset, chunk, wrs_pathrow):
     """
     This function processes a subset of the DataFrame.
     Replace this with your actual processing function.
     """
+
     locs_feature = csv_to_eeFeat(df_subset, yml['location_crs'][0])
 
     outdata = locs_feature.map(get_occurrence)
     #Define a data export 
     dataOut = (ee.batch.Export.table.toDrive(collection = outdata,
-                                            description = "Pekel_Visibility_" + str(chunk),
-                                            folder = proj_folder,
+                                            description = "Pekel_Visibility_" + wrs_pathrow + "_" + str(chunk),
+                                            folder = out_folder,
                                             fileFormat = 'csv'))
     
     # check for number of tasks running
@@ -145,7 +154,7 @@ def process_subset(df_subset, chunk):
     return ()
 
 
-def process_dataframe_in_chunks(df, chunk_size=5000):
+def process_dataframe_in_chunks(df, wrs_pathrow, chunk_size=5000):
     """
     Process a DataFrame in chunks of specified size.
     
@@ -154,9 +163,10 @@ def process_dataframe_in_chunks(df, chunk_size=5000):
     chunk_size (int): The number of rows in each chunk (default: 5000)
     
     Returns:
-    list: A list of results from processing each chunk
+    none
+    
     """
-    results = []
+    print(f"Sending sites from WRS path-row {wrs_pathrow} to GEE.")
     
     # Calculate the number of chunks
     num_chunks = len(df) // chunk_size + (1 if len(df) % chunk_size != 0 else 0)
@@ -169,13 +179,13 @@ def process_dataframe_in_chunks(df, chunk_size=5000):
         # Subset the DataFrame
         df_subset = df.iloc[start_idx:end_idx]
         
-        # Process the subset and store the result
-        result = process_subset(df_subset, i)
-        results.append(result)
+        # Process the subset
+        process_subset(df_subset, i, wrs_pathrow)
         
         print(f"Processed chunk {i+1}/{num_chunks}")
     
-    return ()
+    return (None)
+
 
 # and then actualy process the chunks!
-process_dataframe_in_chunks(locations)
+process_dataframe_in_chunks(df = filtered_locs, wrs_pathrow = pathrows)

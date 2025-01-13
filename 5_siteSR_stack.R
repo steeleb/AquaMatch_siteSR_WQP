@@ -16,6 +16,9 @@ yaml_file <- "gee_config.yml"
 
 # target objects in workflow
 p5_siteSR_stack <- list(
+
+  # general configuration ---------------------------------------------------
+
   # make directories if needed
   tar_target(
     name = p5_check_dir_structure,
@@ -61,7 +64,7 @@ p5_siteSR_stack <- list(
         drive_auth(p0_siteSR_config$google_email)
         drive_ls(p5_yml$proj_folder)
       }, error = function(e) {
-        # if the outpath doesn't exist, create it along with a "stable" subfolder
+        # if the outpath doesn't exist, create it
         drive_mkdir(name = p5_yml$proj_folder,
                     path = p0_siteSR_config$drive_project_folder)
       })
@@ -72,6 +75,30 @@ p5_siteSR_stack <- list(
     priority = 1,
     deployment = "main"
   ),
+  
+  # Check for GEE export subfolder, create if not present
+  tar_target(
+    name = p5_check_pekel_folder,
+    command = {
+      p0_check_drive_parent_folder
+      tryCatch({
+        drive_auth(p0_siteSR_config$google_email)
+        drive_ls(paste0("pekel_v", p5_yml$run_date))
+      }, error = function(e) {
+        # if the outpath doesn't exist, create it
+        drive_mkdir(name = paste0("pekel_v", p5_yml$run_date),
+                    path = p0_siteSR_config$drive_project_folder)
+      })
+    },
+    packages = "googledrive",
+    cue = tar_cue("always"),
+    error = "stop",
+    priority = 1,
+    deployment = "main"
+  ),
+  
+
+  # locations and pathrows --------------------------------------------------
   
   # load, format, save locations, depends on p4_sites_with_NHD_attribution target
   tar_target(
@@ -113,11 +140,14 @@ p5_siteSR_stack <- list(
     command = {
       one_PR_per_site <- p5_add_WRS_to_site %>% 
         slice(1, .by = "id")
-      write_csv(one_PR_per_site, "5_siteSR_stack/run/locs_with_wrs_for_pekel.csv")
+      write_csv(one_PR_per_site, "5_siteSR_stack/run/locs_with_WRS_for_pekel.csv")
       one_PR_per_site
     },
     deployment = "main"
   ),
+  
+
+  # assess visibility of sites ----------------------------------------------
   
   # Run pekel pull - this is broken up by 5k sites in the script, so it takes
   # a bit of time.
@@ -125,8 +155,9 @@ p5_siteSR_stack <- list(
     name = p5_run_pekel,
     command = {
       p5_sites_for_pekel
-      source_python("5_siteSR_stack/py/runPekelOccurrence.py")
+      run_pekel_per_pathrow(WRS_pathrow = p5_WRS_pathrows)
     },
+    pattern = p5_WRS_pathrows,
     packages = "reticulate",
     deployment = "main"
   ),
@@ -170,7 +201,7 @@ p5_siteSR_stack <- list(
       map(files, read_csv) %>% 
         bind_rows %>% 
         select(id, occurrence_med, occurrence_max, occurrence_min) %>% 
-        left_join(., p5_save_contained_sites)
+        left_join(., p5_add_WRS_to_site)
     }
   ),
   
@@ -186,6 +217,9 @@ p5_siteSR_stack <- list(
       visible_sites
     }
   ),
+  
+
+  # pull stacks for visible sites -------------------------------------------
   
   # run the Landsat pull as function per pathrow
   tar_target(
@@ -207,6 +241,9 @@ p5_siteSR_stack <- list(
     },
     packages = "reticulate"
   ),
+  
+
+  # download and collate site stacks ----------------------------------------
   
   # download all files
   tar_target(
