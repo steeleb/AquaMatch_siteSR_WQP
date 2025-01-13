@@ -124,11 +124,10 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         st_transform(crs = st_crs(huc4_fl))
     }
     
-    # split the sites by Monitoring Location Type - for this, we'll just
-    # pair river/stream sites to flowlines and lake/reservoir sites are paired to
+    # we'll associate flowlines across all sites.  are paired to
     # waterbodies in add_NHD_waterbody_to_sites()
     huc4_flowline_points <- sf_subset %>%
-      filter(grepl("river|stream", MonitoringLocationTypeName, ignore.case = T))
+      filter(grepl("river|stream|lake|reservoir", MonitoringLocationTypeName, ignore.case = T))
     
     # Assign waterbodies to flowline points -------------------------------------
     
@@ -153,9 +152,11 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       matched <- matched %>%
         mutate(dist_to_fl = st_distance(matched, huc4_matched, by_element = TRUE)) %>%
         mutate(dist_to_fl = as.numeric(dist_to_fl)) %>%
-        # if the distance to the flowline is > 500m, recode all the flowline info
+        # if the distance to the flowline is > 500m, recode all the flowline info 
+        # ** if ** the location type is river/stream, otherwise the distance can 
+        # stay for lake/res, since the distance could be large for large waterbodies
         mutate(across(all_of(c("fl_nhd_id", "fl_gnis_id", "fl_gnis_name", "fl_stream_order", "fl_fcode")),
-                      ~ if_else(dist_to_fl > 500,
+                      ~ if_else(dist_to_fl > 500 & grepl("river|stream", MonitoringLocationTypeName, ignore.case = T),
                                 NA,
                                 .))) %>%
         select(-fl_id)
@@ -164,21 +165,19 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       assignment <- matched %>%
         # 0 = point <= 100m proximate to flowline (nhd_id info, distance < 100)
         # 1 = point <= 500m proximate to flowline (nhd_id info and distance info)
-        # 2 = point unable to be assigned to flowline (no nhd_id, but
-        # distance info, dist > 500m)
+        # 2 = point > 500m proximate to flowline, but a lake/res site ()
+        # 3 = point unable to be assigned to flowline for a stream site (no nhd_id, but
+        #     distance info, dist > 500m)
         mutate(flag_fl = case_when(!is.na(fl_nhd_id) & dist_to_fl <= 100 ~ 0,
                                    !is.na(fl_nhd_id) & dist_to_fl <= 500 ~ 1,
-                                   is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 2))
+                                   !is.na(fl_nhd_id) & dist_to_fl > 500 ~ 2,
+                                   is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 3))
       
-      # check to make sure that the points are back in WGS84, if necessary
-      if (st_crs(assignment) != "EPSG:4326") {
-        
-        assignment <- assignment %>% 
-          st_transform(crs = "EPSG:4326")
-        
-      }
-      
-      assignment
+      # return unique site info, huc code, and all the flowline info
+      assignment %>% 
+        st_drop_geometry() %>% 
+        select(MonitoringLocationIdentifier, HUCEightDigitCode,
+               all_of(starts_with("fl_")), dist_to_fl, flag_fl)
       
     } else {
       

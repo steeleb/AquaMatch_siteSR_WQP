@@ -34,10 +34,22 @@ p4_compile_sites <- list(
     name = p4_distinct_sites,
     command = {
       # combine across all site infos, but only retain distinct rows. 
-      bind_rows(list(p3_chla_harmonized_site_info, 
-                     p3_sdd_harmonized_site_info,
-                     p3_doc_harmonized_site_info)) %>% 
+      distinct <- bind_rows(list(p3_chla_harmonized_site_info, 
+                                 p3_sdd_harmonized_site_info,
+                                 p3_doc_harmonized_site_info)) %>% 
+        # need to coerce lat/lon to numeric in order to properly find
+        # distinct sites
+        mutate(across(c(LatitudeMeasure, LongitudeMeasure),
+                      ~ as.numeric(.))) %>% 
         distinct() 
+      # there are still a few oddballs (~6k) that are duplicated for reasons
+      # that I truly can not figure out, so grab duplicated MonitoringLocationIdentifier,
+      # remove from distinct, then add back in the singular duplicated MonitoringLocationIdentifier
+      duplicated <- distinct[duplicated(distinct$MonitoringLocationIdentifier), ]
+      distinct <- distinct %>% 
+        filter(!MonitoringLocationIdentifier %in% duplicated$MonitoringLocationIdentifier)
+      # now join those back together
+      bind_rows(duplicated, distinct)
     },
     deployment = "main"
   ), 
@@ -93,7 +105,7 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
   ),
   
-  # Calculate the closest flowline to each river/stream site by HUC4
+  # Calculate the closest flowline to each river/stream/res/lake/pond site by HUC4
   tar_target(
     name = p4_add_NHD_flowline_info,
     command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
@@ -102,24 +114,34 @@ p4_compile_sites <- list(
     packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
   ),
   
-  # try state download of hucs without processing (mid folder)
+  # future opportunity: try state download of hucs without processing, currently 
+  # in mid folder
   
-  # add flowline using waterbody
-  
-  # note, the collated files (waterbody and flowline) will NOT have the same
-  # number of rows as p4_add_HUC8 as we drop all but river/stream/lake/pond/reservoir
-  
-  
+  # future opportunity: add flowline to waterbody points. For users wishing to 
+  # be able to trace using NHD functions, this could be useful. Because the associated
+  # waterbody metadata for flowlines seems pretty incomplete, this is hard to do.
+  # at this time, nearest flowline will be assigned in p4_add_NHD_flowline info, but
+  # flowline metadata are not cross-referenced with the previously-assigned waterbody
+
   # And add that waterbody and flowline info to the unique sites with HUC info
   tar_target(
-    name = p4_WQP_sites,
+    name = p4_WQP_site_NHD_info,
     command = {
-      collated_sites <- rbind(p4_add_NHD_waterbody_info, 
-                              p4_add_NHD_flowline_info) %>% 
+      # join the data together
+      collated_sites <- full_join(p4_add_NHD_waterbody_info, 
+                                    p4_add_NHD_flowline_info) %>% 
+        # add in spatial info from above
+        full_join(p4_add_HUC8, .) %>% 
         st_drop_geometry() %>% 
         rowid_to_column("siteSR_id")
-      # write this file for use in yml/ee workflow
-      write_csv(collated_sites, "4_compile_sites/out/p4_WQP_sites.csv")
+      # turns out there are a few overlapping NHD waterbody polygons that create 
+      # a handful of extra rows here. For the purposes of this workflow, we'll 
+      # just grab the larger of the two overlapping polygons. 
+      collated_sites <- collated_sites %>% 
+        arrange(-wb_areasqkm) %>% 
+        slice(1, .by = MonitoringLocationIdentifier)
+      write_csv(collated_sites, 
+                "4_compile_sites/out/collated_WQP_sites.csv")
       collated_sites
     },
     deployment = "main"

@@ -156,7 +156,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         left_join(huc4_lake_points, .) %>%
         filter(!is.na(wb_nhd_id)) %>%
         # add distance to waterbody for rbind later
-        mutate(dist_to_wbd = NA)
+        mutate(dist_to_wb = NA)
       
       # get any unmatched Lake points. Here, we will just grab the closest
       # waterbody and the distance to that waterbody. For each of them,
@@ -174,11 +174,11 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         arrange(wbd_id)
       
       unmatched <- unmatched %>%
-        mutate(dist_to_wbd = st_distance(unmatched, huc4_unmatched, by_element = TRUE)) %>%
-        mutate(dist_to_wbd = as.numeric(dist_to_wbd)) %>%
+        mutate(dist_to_wb = st_distance(unmatched, huc4_unmatched, by_element = TRUE)) %>%
+        mutate(dist_to_wb = as.numeric(dist_to_wb)) %>%
         # if the distance to the waterbody is > 500m, recode all the waterbody info
         mutate(across(all_of(c("wb_nhd_id", "wb_gnis_id", "wb_gnis_name", "wb_areasqkm")),
-                      ~ if_else(dist_to_wbd > 500,
+                      ~ if_else(dist_to_wb > 500,
                                 NA,
                                 .))) %>%
         select(-wbd_id)
@@ -190,19 +190,15 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         # closest waterbody. (nhd_id info and distance info)
         # 2 = point unable to be assigned to waterbody (no nhd_id, but
         # distance info)
-        mutate(flag_wbd = case_when(!is.na(wb_nhd_id) & is.na(dist_to_wbd) ~ 0,
-                                    !is.na(wb_nhd_id) & !is.na(dist_to_wbd) ~ 1,
-                                    is.na(wb_nhd_id) & !is.na(dist_to_wbd) ~ 2))
+        mutate(flag_wb = case_when(!is.na(wb_nhd_id) & is.na(dist_to_wb) ~ 0,
+                                   !is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 1,
+                                   is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 2))
       
-      # check to make sure that the points are back in WGS84, if necessary
-      if (st_crs(assignment) != "EPSG:4326") {
-        
-        assignment <- assignment %>% 
-          st_transform(crs = "EPSG:4326")
-        
-      }
-      
-      assignment
+      # return unique site info, huc code, and all the waterbody info
+      assignment %>% 
+        st_drop_geometry() %>% 
+        select(MonitoringLocationIdentifier, HUCEightDigitCode,
+               all_of(starts_with("wb_")), dist_to_wb, flag_wb)
       
     } else {
       
