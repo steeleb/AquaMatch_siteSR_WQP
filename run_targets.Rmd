@@ -36,44 +36,32 @@ packages <- c('tidyverse',
 lapply(packages, package_installer)
 ```
 
-## Authenticate and initialize Earth Engine
+<!-- ## Authenticate and initialize Earth Engine -->
 
-You will need to have [installed and initialized the `gcloud CLI`](https://cloud.google.com/sdk/docs/install) 
-and have a [Google Earth Engine account](https://code.earthengine.google.com/register) 
-prior to running this workflow. Some common troubleshooting solutions 
-[can be found here]<https://github.com/rossyndicate/ROSS_RS_mini_tools/blob/main/helps/CommonIssues.md>).
+<!-- You will need to have [installed and initialized the `gcloud CLI`](https://cloud.google.com/sdk/docs/install)  -->
+<!-- and have a [Google Earth Engine account](https://code.earthengine.google.com/register)  -->
+<!-- prior to running this workflow. Some common troubleshooting solutions  -->
+<!-- [can be found here]<https://github.com/rossyndicate/ROSS_RS_mini_tools/blob/main/helps/CommonIssues.md>). -->
 
-### Authentication
+<!-- ### Authentication -->
 
-To authenticate your GEE account, we will use a Python environment created in the 
-R file 'data_acquisition/src/py/pySetup.R'. This will take a few minutes if you 
-haven't yet run the python setup script while it creates a virtual environment.
+<!-- To authenticate your GEE account, we will use a Python environment created in the  -->
+<!-- R file 'data_acquisition/src/py/pySetup.R'. This will take a few minutes if you  -->
+<!-- haven't yet run the python setup script while it creates a virtual environment. -->
 
-```{r}
-source('src/py/pySetup.R')
-```
+<!-- ```{r} -->
+<!-- source('src/py/pySetup.R') -->
+<!-- ``` -->
 
-### Authenticate your instance of GEE
+<!-- ### Authenticate your instance of GEE -->
 
-```{python}
-import ee
+<!-- ```{python} -->
+<!-- import ee -->
 
-ee.Authenticate(auth_mode = 'localhost')
-```
+<!-- ee.Authenticate(auth_mode = 'localhost') -->
+<!-- ``` -->
 
 ## Run the targets pipeline and output a network graph.
-
-Prior to running this pipeline, you'll need to populate the `config.yml` file 
-with the information for the Landsat Surface Reflectance and Surface Temperature 
-Collection 2 product stack pull. Additionally, you will need to change line 5 of 
-the `_targets.R` file if you have renamed the config file from `config.yml`.
-
-If you wish to run the example_config.yml pull, you will need to change the following
-.yml settings to those associated with your computer and/or google account information:
-
-- Line 8: data_dir
-- Line 20: google_email
-- Line 23: ee_proj 
 
 ```{r run_targets, echo = F}
 library(targets)
