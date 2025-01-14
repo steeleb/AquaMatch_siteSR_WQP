@@ -78,11 +78,9 @@ If you wish to run the example_config.yml pull, you will need to change the foll
 ```{r run_targets, echo = F}
 library(targets)
 
-{
-  tar_make()
-  
-  tar_visnetwork()
-}
+tar_make(p4_WQP_site_NHD_info)
+
+tar_visnetwork()
 ```
 
 

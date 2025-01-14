@@ -35,8 +35,7 @@ tar_option_set(
 # Run the R scripts with custom functions:
 tar_source(files = c(
   "src/",
-  "4_compile_sites.R",
-  "5_siteSR_stack.R"))
+  "4_compile_sites.R"))
 
 # The list of targets/steps
 config_targets <- list(
@@ -307,5 +306,4 @@ config_targets <- list(
 
 # Full targets list
 c(config_targets,
-  p4_compile_sites,
-  p5_siteSR_stack)
+  p4_compile_sites)
