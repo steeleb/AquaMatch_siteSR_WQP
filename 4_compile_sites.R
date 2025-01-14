@@ -140,6 +140,10 @@ p4_compile_sites <- list(
       collated_sites <- collated_sites %>% 
         arrange(-wb_areasqkm) %>% 
         slice(1, .by = MonitoringLocationIdentifier)
+      # fill in flags where HUC8 was not able to be assigned
+      collated_sites <- collated_sites %>% 
+        mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),
+               flag_wb = if_else(is.na(flag_fl), 4, flag_fl))
       write_csv(collated_sites, 
                 "4_compile_sites/out/collated_WQP_sites.csv")
       collated_sites
