@@ -190,6 +190,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         # closest waterbody. (nhd_id info and distance info)
         # 2 = point unable to be assigned to waterbody (no nhd_id, but
         # distance info)
+        # 3 = point does not have HUC8 assignment, so no waterbody assigned (not assigned here)
         mutate(flag_wb = case_when(!is.na(wb_nhd_id) & is.na(dist_to_wb) ~ 0,
                                    !is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 1,
                                    is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 2))

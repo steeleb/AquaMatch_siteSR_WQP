@@ -168,6 +168,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         # 2 = point > 500m proximate to flowline, but a lake/res site ()
         # 3 = point unable to be assigned to flowline for a stream site (no nhd_id, but
         #     distance info, dist > 500m)
+        # 4 = point does not have HUC8 assignment, so no flowline assigned (not assigned here)
         mutate(flag_fl = case_when(!is.na(fl_nhd_id) & dist_to_fl <= 100 ~ 0,
                                    !is.na(fl_nhd_id) & dist_to_fl <= 500 ~ 1,
                                    !is.na(fl_nhd_id) & dist_to_fl > 500 ~ 2,
