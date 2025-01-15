@@ -117,7 +117,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     }
     
     # NHD Best res is often in other crs (NAD83), so the points need to be converted if 
-    # the polygons are.
+    # the flowlines are.
     
     if (st_crs(huc4_fl) != st_crs(sf_subset)) {
       sf_subset <- sf_subset %>% 
