@@ -184,9 +184,10 @@ p5_siteSR_stack <- list(
       # authorize Google
       drive_auth(email = p5_yml$google_email)
       # create the folder path as proj_folder and run_date
-      drive_folder = file.path(p5_yml$proj_parent_folder, paste0("pekel_v", p5_yml$run_date))
+      drive_folder = paste0(p5_yml$proj_parent_folder, "pekel_v", p5_yml$run_date)
       # get a list of files in the project file
-      drive_ls(path = drive_folder)
+      drive_ls(path = drive_folder) %>% 
+        select(name, id)
     },
     packages = "googledrive",
     deployment = "main"
@@ -194,9 +195,8 @@ p5_siteSR_stack <- list(
   
   tar_target(
     name = p5_pekel_download,
-    command = download_csvs_from_drive(local_folder = file.path("5_siteSR_stack/down", 
-                                                                p5_yml$run_date,
-                                                                "pekel"),
+    command = download_csvs_from_drive(local_folder = "5_siteSR_stack/down",
+                                       file_type = "pekel",
                                        yml = p5_yml,
                                        drive_contents = p5_pekel_contents),
     packages = c("tidyverse", "googledrive")
@@ -210,11 +210,14 @@ p5_siteSR_stack <- list(
       files <- list.files(file.path("5_siteSR_stack/down/", 
                                     p5_yml$run_date, 
                                     "pekel"), 
-                          full.names = TRUE)
-      map(files, read_csv) %>% 
-        bind_rows %>% 
+                          full.names = TRUE) 
+      test <- map(files, read_csv) %>% 
+        bind_rows() %>% 
         select(id, occurrence_med, occurrence_max, occurrence_min) %>% 
-        left_join(., p5_add_WRS_to_site)
+        # add wrs info for proper join with site info
+        left_join(., p5_sites_for_pekel) %>% 
+        # add site info (on id/lat/lon/wrs)
+        left_join(., p5_add_WRS_to_site) 
     }
   ),
   

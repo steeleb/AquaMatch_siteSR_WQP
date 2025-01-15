@@ -28,7 +28,9 @@ p99_compile_drive_ids <- list(
       get_file_ids(google_email = p0_siteSR_config$google_email,
                    drive_folder = "~/aquamatch_siteSR_wqp/targets/",
                    file_path = "99_compile_drive_ids/out/target_drive_ids.csv",
-                   depend = c(p4_export_sites, p99_check_dir_structure))
+                   depend = c(p4_export_sites,
+                              p5_export_visible_sites,
+                              p99_check_dir_structure))
     },
     cue = tar_cue("always"),
     packages = c("tidyverse", "googledrive")

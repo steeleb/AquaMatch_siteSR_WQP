@@ -39,11 +39,11 @@ download_csvs_from_drive <- function(local_folder,
   drive_auth(email = yml$google_email)
   # make sure they are only .csv files
   drive_contents <- drive_contents %>% 
-    filter(grepl(".csv", name))
+    filter(grepl("csv", name))
   # check to see if any further filtering needs to be done per file_type argument
   if (!is.null(file_type)) {
     drive_contents <- drive_contents %>% 
-      filter(grepl(file_type, name))
+      filter(grepl(file_type, name, ignore.case = TRUE))
     # if file type is not metadata, further filtering to remove metadata necessary
     if (file_type != "metadata") {
       drive_contents <- drive_contents %>% 
@@ -53,12 +53,12 @@ download_csvs_from_drive <- function(local_folder,
   # make sure run date folder has been created
   if (!dir.exists(file.path(local_folder, yml$run_date))) {
     directory <- file.path(local_folder, yml$run_date)
-    dir.create(directory)
+    dir.create(directory, recursive = TRUE)
   }
   if (!is.null(file_type)) {
     directory <- file.path(local_folder, yml$run_date, file_type)
     if (!dir.exists(directory)) {
-      dir.create(directory)
+      dir.create(directory, recursive = TRUE)
     }
   }
   
