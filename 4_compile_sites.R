@@ -151,7 +151,7 @@ p4_compile_sites <- list(
     deployment = "main"
   ),
   
-  # save this target as an .RDS in Drive
+  # save this target as an .RDS in Drive, no need for this to be versioned at this time
   tar_target(
     name = p4_export_sites,
     command = {

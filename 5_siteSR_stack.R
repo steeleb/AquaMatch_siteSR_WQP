@@ -234,7 +234,7 @@ p5_siteSR_stack <- list(
     }
   ),
   
-  # export this target for use in documentation
+  # export this target for use in documentation, no need for this to be versioned at this time
   tar_target(
     name = p5_export_visible_sites,
     command = {
