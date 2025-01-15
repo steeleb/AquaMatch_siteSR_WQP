@@ -126,8 +126,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     
     # we'll associate flowlines across all sites.  are paired to
     # waterbodies in add_NHD_waterbody_to_sites()
-    huc4_flowline_points <- sf_subset %>%
-      filter(grepl("river|stream|lake|reservoir", MonitoringLocationTypeName, ignore.case = T))
+    huc4_flowline_points <- sf_subset 
     
     # Assign waterbodies to flowline points -------------------------------------
     
@@ -156,7 +155,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         # ** if ** the location type is river/stream, otherwise the distance can 
         # stay for lake/res, since the distance could be large for large waterbodies
         mutate(across(all_of(c("fl_nhd_id", "fl_gnis_id", "fl_gnis_name", "fl_stream_order", "fl_fcode")),
-                      ~ if_else(dist_to_fl > 500 & grepl("river|stream", MonitoringLocationTypeName, ignore.case = T),
+                      ~ if_else(dist_to_fl > 500 & grepl("river|stream|cancal", MonitoringLocationTypeName, ignore.case = T),
                                 NA,
                                 .))) %>%
         select(-fl_id)

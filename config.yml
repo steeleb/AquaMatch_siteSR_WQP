@@ -12,6 +12,7 @@ default:
   # the pipeline that runs the harmonize step)
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
   parameters: "chla,sdd,doc" # any combination of harmonized parameters in lowercase separated by ","
+  run_date: "20250113"
   chla_use_stable: FALSE
   chla_match_make_stable: FALSE
   sdd_use_stable: FALSE
@@ -28,6 +29,7 @@ use_stable:
   handoff_stable_date: ""
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
   parameters: "chla,sdd,doc" # any combination of harmonized parameters in lowercase separated by ","
+  run_date: "20250113"
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   chla_match_make_stable: TRUE
@@ -46,6 +48,7 @@ admin_update:
   google_email: "therossyndicate@gmail.com"
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
   parameters: "chla,sdd,doc" # any combination of harmonized parameters in lowercase separated by ","
+  run_date: "20250113"
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   chla_match_make_stable: TRUE
