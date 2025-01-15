@@ -16,9 +16,9 @@ yaml_file <- "gee_config.yml"
 
 # target objects in workflow
 p5_siteSR_stack <- list(
-
+  
   # general configuration ---------------------------------------------------
-
+  
   # make directories if needed
   tar_target(
     name = p5_check_dir_structure,
@@ -97,7 +97,7 @@ p5_siteSR_stack <- list(
     deployment = "main"
   ),
   
-
+  
   # locations and pathrows --------------------------------------------------
   
   # load, format, save locations, depends on p4_sites_with_NHD_attribution target
@@ -114,8 +114,8 @@ p5_siteSR_stack <- list(
   tar_target(
     name = p5_WRS_pathrows,
     command = get_WRS_pathrows(detection_method = "site", 
-                            yaml = p5_yml, 
-                            locs = p5_locs),
+                               yaml = p5_yml, 
+                               locs = p5_locs),
     packages = c("readr", "sf"),
     deployment = "main"
   ),
@@ -146,7 +146,7 @@ p5_siteSR_stack <- list(
     deployment = "main"
   ),
   
-
+  
   # assess visibility of sites ----------------------------------------------
   
   # Run pekel pull - this is broken up by 5k sites in the script, so it takes
@@ -155,6 +155,7 @@ p5_siteSR_stack <- list(
     name = p5_run_pekel,
     command = {
       p5_sites_for_pekel
+      p5_yml
       run_pekel_per_pathrow(WRS_pathrow = p5_WRS_pathrows)
     },
     pattern = p5_WRS_pathrows,
@@ -172,20 +173,32 @@ p5_siteSR_stack <- list(
     packages = "reticulate",
     deployment = "main"
   ),
-  
-  # get list of Pekel files
-  
+
   # download Pekel files
+  
+  tar_target(
+    name = p5_pekel_contents,
+    command = {
+      # make sure that pekel tasks complete
+      p5_pekel_tasks_complete
+      # authorize Google
+      drive_auth(email = p5_yml$google_email)
+      # create the folder path as proj_folder and run_date
+      drive_folder = file.path(p5_yml$proj_parent_folder, paste0("pekel_v", p5_yml$run_date))
+      # get a list of files in the project file
+      drive_ls(path = drive_folder)
+    },
+    packages = "googledrive",
+    deployment = "main"
+  ),
+  
   tar_target(
     name = p5_pekel_download,
-    command = {
-      p5_pekel_tasks_complete
-      download_csvs_from_drive(drive_folder_name = p5_yml$proj_folder,
-                               google_email = p5_yml$google_email,
-                               version_identifier = p5_yml$run_date,
-                               download_type = "pekel")
-    },
-    # pattern = # list of pekel files
+    command = download_csvs_from_drive(local_folder = file.path("5_siteSR_stack/down", 
+                                                                p5_yml$run_date,
+                                                                "pekel"),
+                                       yml = p5_yml,
+                                       drive_contents = p5_pekel_contents),
     packages = c("tidyverse", "googledrive")
   ),
   
@@ -218,7 +231,22 @@ p5_siteSR_stack <- list(
     }
   ),
   
-
+  # export this target for use in documentation
+  tar_target(
+    name = p5_export_visible_sites,
+    command = {
+      p0_check_targets_drive
+      export_single_target(target = p5_visible_sites,
+                           drive_path = "~/aquamatch_siteSR_wqp/targets/",
+                           stable = FALSE,
+                           google_email = p5_yml$google_email,
+                           date_stamp = p5_yml$run_date)
+    },
+    packages = c("tidyverse", "googledrive"),
+    deployment = "main"
+  ),
+  
+  
   # pull stacks for visible sites -------------------------------------------
   
   # run the Landsat pull as function per pathrow
@@ -226,6 +254,7 @@ p5_siteSR_stack <- list(
     name = p5_eeRun,
     command = {
       p5_visible_sites
+      p5_yml
       run_GEE_per_pathrow(WRS_pathrow = p5_WRS_pathrows)
     },
     pattern = map(p5_WRS_pathrows),
@@ -242,7 +271,7 @@ p5_siteSR_stack <- list(
     packages = "reticulate"
   ),
   
-
+  
   # download and collate site stacks ----------------------------------------
   
   # download all files

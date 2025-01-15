@@ -52,7 +52,8 @@ export_single_target <- function(target, drive_path, stable, google_email,
                         # The folder on Google Drive
                         path = drive_path,
                         # The filename on Google Drive
-                        name = paste0(target_string, extension))
+                        name = paste0(target_string,
+                                      extension))
   
   # Make the Google Drive link shareable: anyone can view
   drive_share_anyone(out_file)
