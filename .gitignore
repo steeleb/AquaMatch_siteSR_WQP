@@ -13,7 +13,7 @@
 # R Environment Variables
 .Renviron
 
-# Data
+# targets data
 _targets/
 
 # Ignore data file types
@@ -25,3 +25,17 @@ _targets/
 
 # Workflow-specific filepaths
 4_compile_sites/in/*
+4_compile_sites/mid/*
+4_compile_sites/out/*
+4_compile_sites/nhd/*
+
+5_siteSR_stack/mid/*
+5_siteSR_stack/down/*
+5_siteSR_stack/run/*
+5_siteSR_stack/out/*
+
+# Python environment
+env/*
+
+# Scratch files
+scratch/*

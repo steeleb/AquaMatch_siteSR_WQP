@@ -1,0 +1,74 @@
+
+# Purpose
+
+This is a helper script that loads all necessary packages to run the targets 
+pipeline, then runs it to acquire Landsat Collection 2 surface reflectance and
+surface temperature for user-defined areas of interest (AOI). While this script
+is written in an .Rmd script, we recommend walking through this script manually, 
+as the knit function often runs into issues and this script has a number of 
+interactive steps.
+
+## Install necessary packages
+
+```{r package_installer, echo = F}
+package_installer <- function(x) {
+  if (x %in% installed.packages()) {
+    print(paste0('{', x ,'} package is already installed.'))
+    } else {
+      install.packages(x)
+      print(paste0('{', x ,'} package has been installed.'))
+    }
+  }
+```
+
+List packages that need to be checked for install, and walk the function along them all.
+
+```{r walk_package_installer, message = F}
+packages <- c('tidyverse',
+              'reticulate',
+              'targets',
+              'tarchetypes',
+              'yaml',
+              'nhdplusTools',
+              'polylabelr',
+              'sf')
+
+lapply(packages, package_installer)
+```
+
+<!-- ## Authenticate and initialize Earth Engine -->
+
+<!-- You will need to have [installed and initialized the `gcloud CLI`](https://cloud.google.com/sdk/docs/install)  -->
+<!-- and have a [Google Earth Engine account](https://code.earthengine.google.com/register)  -->
+<!-- prior to running this workflow. Some common troubleshooting solutions  -->
+<!-- [can be found here]<https://github.com/rossyndicate/ROSS_RS_mini_tools/blob/main/helps/CommonIssues.md>). -->
+
+<!-- ### Authentication -->
+
+<!-- To authenticate your GEE account, we will use a Python environment created in the  -->
+<!-- R file 'data_acquisition/src/py/pySetup.R'. This will take a few minutes if you  -->
+<!-- haven't yet run the python setup script while it creates a virtual environment. -->
+
+<!-- ```{r} -->
+<!-- source('src/py/pySetup.R') -->
+<!-- ``` -->
+
+<!-- ### Authenticate your instance of GEE -->
+
+<!-- ```{python} -->
+<!-- import ee -->
+
+<!-- ee.Authenticate(auth_mode = 'localhost') -->
+<!-- ``` -->
+
+## Run the targets pipeline and output a network graph.
+
+```{r run_targets, echo = F}
+library(targets)
+
+tar_make(p4_WQP_site_NHD_info)
+
+tar_visnetwork()
+```
+
+
