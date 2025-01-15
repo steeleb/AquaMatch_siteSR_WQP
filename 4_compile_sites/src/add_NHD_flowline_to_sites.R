@@ -53,7 +53,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       if (!file.exists(file.path("4_compile_sites/nhd/",
                                  paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")))) {
         
-        # but if it doesn't, download it!
+        # but if it isn't, download it!
         
         # set timeout so that... this doesn't timeout
         options(timeout = 60000)
