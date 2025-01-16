@@ -14,7 +14,7 @@ We suggest you use the `run_targets.Rmd` script to run this workflow, as it walk
 
 ## Targets Architecture
 
-\*\*\_targets.R:\*\*
+**\_targets.R:**
 
 This initial group of targets checks the configuration settings in config.yml, checks for the harmonization and lakeSR pipelines, and checks for Google Drive folder architecture. This group also acquires target objects from the harmonization and lakeSR pipelines.
 
