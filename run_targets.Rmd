@@ -1,12 +1,48 @@
+---
+editor_options: 
+  markdown: 
+    wrap: 80
+---
 
 # Purpose
 
-This is a helper script that loads all necessary packages to run the targets 
+This is a helper script that loads all necessary packages to run the targets
 pipeline, then runs it to acquire Landsat Collection 2 surface reflectance and
 surface temperature for user-defined areas of interest (AOI). While this script
-is written in an .Rmd script, we recommend walking through this script manually, 
-as the knit function often runs into issues and this script has a number of 
+is written in an .Rmd script, we recommend walking through this script manually,
+as the knit function often runs into issues and this script has a number of
 interactive steps.
+
+## Pre-requisites
+
+siteSR_WQP relies on a configuration file (`config.yml`) to run specific
+profiles that determine what operations are being run. The file contains three
+configuration profiles: "default", "admin_update", and "use_stable".
+
+-   "default" runs the pipeline without using any publicaly-stable versions of
+    datasets made with AquaMatch_harmonize_WQP. This requires that the
+    AquaMatch_harmonize_WQP pipeline has been run locally.
+
+-   "use_stable" uses publicly-posted stable versions of datasets from
+    AquaMatch_harmonize_WQP and is intended for those who wish to modify choices
+    made in siteSR_WQP or for those who wish to have the complete pipeline on
+    their local device. This is the recommended setting for most users.
+
+-   "admin_update" is intended for use by ROSSyndicate members when updating
+    siteSR datasets and create publicly-stable versions of the siteSR_WQP to be
+    stored in the AquaMatch_siteSR_WQP repository.
+
+All configurations will be reliant on the stable version of handoff coefficients
+calculated in AquaMatch_lakeSR.
+
+Proper configuration of harmonize_repo_directory and lakeSR_repo_directory is
+imperative as the siteSR_WQP workflow references files inside
+AquaMatch_harmonize_WQP and AquaMatch_lakeSR file structures. If this is
+incorrectly set up, users will receive a message to communicate this and the
+workflow will stop. All repositories stored on the AquaSat v2 GitHub will
+contain files that link to versions of the data that the AquaSat v2 team has
+harmonized so that a local run is not necessitated. Any run of the "default"
+configuration will require that the harmonize pipeline has been run locally.
 
 ## Install necessary packages
 
@@ -21,7 +57,8 @@ package_installer <- function(x) {
   }
 ```
 
-List packages that need to be checked for install, and walk the function along them all.
+List packages that need to be checked for install, and walk the function along
+them all.
 
 ```{r walk_package_installer, message = F}
 packages <- c('tidyverse',
@@ -36,39 +73,46 @@ packages <- c('tidyverse',
 lapply(packages, package_installer)
 ```
 
-<!-- ## Authenticate and initialize Earth Engine -->
+## Authenticate and initialize Earth Engine
 
-<!-- You will need to have [installed and initialized the `gcloud CLI`](https://cloud.google.com/sdk/docs/install)  -->
-<!-- and have a [Google Earth Engine account](https://code.earthengine.google.com/register)  -->
-<!-- prior to running this workflow. Some common troubleshooting solutions  -->
-<!-- [can be found here]<https://github.com/rossyndicate/ROSS_RS_mini_tools/blob/main/helps/CommonIssues.md>). -->
+You will need to have [installed and initialized the
+`gcloud CLI`](https://cloud.google.com/sdk/docs/install) and have a [Google
+Earth Engine account](https://code.earthengine.google.com/register) prior to
+running this workflow. Some common troubleshooting solutions [can be found
+here]<https://github.com/rossyndicate/ROSS_RS_mini_tools/blob/main/helps/CommonIssues.md>).
 
-<!-- ### Authentication -->
+### Authentication
 
-<!-- To authenticate your GEE account, we will use a Python environment created in the  -->
-<!-- R file 'data_acquisition/src/py/pySetup.R'. This will take a few minutes if you  -->
-<!-- haven't yet run the python setup script while it creates a virtual environment. -->
+To authenticate your GEE account, we will use a Python environment created in
+the R file 'src/py/pySetup.R'. This will take a few minutes if you haven't yet
+run the python setup script while it creates a virtual environment.
 
-<!-- ```{r} -->
-<!-- source('src/py/pySetup.R') -->
-<!-- ``` -->
+```{r}
+source('src/py/pySetup.R')
+```
 
-<!-- ### Authenticate your instance of GEE -->
+### Authenticate your instance of GEE
 
-<!-- ```{python} -->
-<!-- import ee -->
+```{python}
+import ee
 
-<!-- ee.Authenticate(auth_mode = 'localhost') -->
-<!-- ``` -->
+ee.Authenticate(auth_mode = 'localhost')
+```
+
+### Configuration
+
+We use a configuration file (`gee_config.yml`) for the GEE run, as well as a
+general configuration file (`config.yml`). If you are outside of the ROSS team,
+you will need to update some entries in the configuration file and update the
+settings for the `p0_siteSR_config` target in the `_targets.R` script in order
+to successfully run this workflow.
 
 ## Run the targets pipeline and output a network graph.
 
 ```{r run_targets, echo = F}
 library(targets)
 
-tar_make(p4_WQP_site_NHD_info)
+tar_make(p99_make_target_ids)
 
 tar_visnetwork()
 ```
-
-
