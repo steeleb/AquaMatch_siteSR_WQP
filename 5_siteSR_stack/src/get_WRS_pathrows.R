@@ -7,7 +7,7 @@
 #' @param yaml contents of the yaml .csv file
 #' @param locs sf object of user-provided locations for Landsat acqusition
 #' 
-#' @returns list of WRS2 pathrows, silently returns sites with WRS info
+#' @returns list of WRS2 pathrows, silently saves WRS subset
 #' 
 #' 
 get_WRS_pathrows <- function(detection_method, yaml, locs) {

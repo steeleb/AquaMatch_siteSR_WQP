@@ -1,17 +1,16 @@
 #' @title Check to see if point is completely contained within path-row
 #' 
 #' @description
-#' Using the output of the previous target `WRS_pathrows_poi`, and the output of 
-#' the target `ref_locations_poi`, add WRS pathrow information to the locations 
-#' file, remove buffered points that are not completely within the 
-#' path row geometry.
+#' Using a set of points with lat/lon, and the unique pathrows associated with them,
+#' add WRS pathrow information to the locations file, remove buffered points that
+#' are not completely within the path row geometry. Buffer is defined in the yaml file.
 #' 
-#' @param WRS_pathrows list of pathrows to iterate over, output of target `WRS_pathrows_poi`
-#' @param locations dataframe of locations, output of target `ref_locations_poi`
+#' @param WRS_pathrows list of pathrows to iterate over
+#' @param locations dataframe of location
 #' @param yaml contents of the yaml .csv file
 #' 
-#' @returns silently saves a .feather file containing the location information 
-#' with the WRS2 pathrow and returns the filepath of resulting .feather file
+#' @returns returns a dataframe of points and buffer that are fully contained by
+#' a single pathrow with the id/lat/lon/PR information
 #' 
 #' @note
 #' This step will result in more rows than the locations file, because a single 

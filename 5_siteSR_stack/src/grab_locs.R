@@ -4,9 +4,10 @@
 #' Load in and format location file using config settings
 #' 
 #' @param yaml contents of the yaml .csv file
+#' 
 #' @returns dataframe of the reformatted location data or the message
 #' 'Not configured to use site locations'. Silently saves 
-#' the .csv in the `6_siteSR_stack/in` directory path if configured for site
+#' the .csv in the `5_siteSR_stack/run` directory path if configured for site
 #' acquisition.
 #' 
 #' 
