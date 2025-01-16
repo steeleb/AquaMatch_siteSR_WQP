@@ -53,7 +53,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       if (!file.exists(file.path("4_compile_sites/nhd/",
                                  paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")))) {
         
-        # but if it doesn't, download it!
+        # but if it isn't, download it!
         
         # set timeout so that... this doesn't timeout
         options(timeout = 60000)
@@ -117,7 +117,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     }
     
     # NHD Best res is often in other crs (NAD83), so the points need to be converted if 
-    # the polygons are.
+    # the flowlines are.
     
     if (st_crs(huc4_fl) != st_crs(sf_subset)) {
       sf_subset <- sf_subset %>% 
