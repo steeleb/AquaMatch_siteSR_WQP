@@ -20,7 +20,7 @@ get_WRS_pathrows <- function(detection_method, yaml, locs) {
       WRS_subset <- WRS[sf, ]
     } else {
       sf <- st_transform(sf, st_crs(WRS))
-      WRS_subset <- WRS[sf,]
+      WRS_subset <- WRS[sf, ]
     }
     # save the file for use later (we don't track this, but need it for the python
     # workflow)
