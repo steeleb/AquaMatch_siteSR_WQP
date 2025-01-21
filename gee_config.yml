@@ -24,6 +24,7 @@ google_settings:
 # files will include this prefix.
 - proj_folder: "siteSR_prelim" # this is the folder name where the GEE data will be save to 
 # Google Drive. If it doesn't exist, it will be created.
+- proj_parent_folder: "~/aquamatch_siteSR_wqp/" # this is the parent folder that the siteSR data is exported to, located at the root directory of your Google Drive
 - ee_proj: "ee-aquamatch" # this is the ee project name you are running your pulls from
 - run_date: "2025-01-13" # date of run for versioning, must be in YYYY-MM-DD foramt
 
@@ -38,7 +39,7 @@ spatial_settings:
 # "site+polygon+polycenter", "polygon+polycenter" - at this time lake and lake 
 # center can only be calculated for lakes in the US
 - site_buffer: 200 # buffer distance in meters around the site or poly center
-- site_filter: TRUE # R boolean (TRUE/FALSE) - note if sites should be filtered to only include lake/res/pond/river/stream sites or not
+- site_filter: FALSE # R boolean (TRUE/FALSE) - note if sites should be filtered to only include lake/res/pond/river/stream sites or not
 
 gee_settings:
 - cloud_filter: "True" # python boolean ("True"/"False") - if True, scenes will be filtered by 

@@ -122,14 +122,14 @@ p4_compile_sites <- list(
   # waterbody metadata for flowlines seems pretty incomplete, this is hard to do.
   # at this time, nearest flowline will be assigned in p4_add_NHD_flowline info, but
   # flowline metadata are not cross-referenced with the previously-assigned waterbody
-
+  
   # And add that waterbody and flowline info to the unique sites with HUC info
   tar_target(
     name = p4_WQP_site_NHD_info,
     command = {
       # join the data together
       collated_sites <- full_join(p4_add_NHD_waterbody_info, 
-                                    p4_add_NHD_flowline_info) %>% 
+                                  p4_add_NHD_flowline_info) %>% 
         # add in spatial info from above
         full_join(p4_add_HUC8, .) %>% 
         st_drop_geometry() %>% 
@@ -148,6 +148,21 @@ p4_compile_sites <- list(
                 "4_compile_sites/out/collated_WQP_sites.csv")
       collated_sites
     },
+    deployment = "main"
+  ),
+  
+  # save this target as an .RDS in Drive, no need for this to be versioned at this time
+  tar_target(
+    name = p4_export_sites,
+    command = {
+      p0_check_targets_drive
+      export_single_target(target = p4_WQP_site_NHD_info,
+                                   drive_path = "~/aquamatch_siteSR_wqp/targets/",
+                                   stable = FALSE,
+                                   google_email = p0_siteSR_config$google_email,
+                                   date_stamp = p0_siteSR_config$run_date)
+      },
+    packages = c("tidyverse", "googledrive"),
     deployment = "main"
   )
   
