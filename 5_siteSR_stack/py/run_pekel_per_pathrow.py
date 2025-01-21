@@ -139,7 +139,7 @@ def process_subset(df_subset, chunk, wrs_pathrow):
     locs_feature = csv_to_eeFeat(df_subset, yml['location_crs'][0])
 
     outdata = locs_feature.map(get_occurrence)
-    #Define a data export 
+    # Define a data export 
     dataOut = (ee.batch.Export.table.toDrive(collection = outdata,
                                             description = "Pekel_Visibility_" + wrs_pathrow + "_" + str(chunk),
                                             folder = out_folder,
