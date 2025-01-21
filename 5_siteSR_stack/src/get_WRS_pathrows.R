@@ -17,7 +17,7 @@ get_WRS_pathrows <- function(detection_method, yaml, locs) {
                    coords = c("Longitude", "Latitude"), 
                    crs = yaml$location_crs) 
     if (st_crs(sf) == st_crs(WRS)) {
-      WRS_subset <- WRS[sf,]
+      WRS_subset <- WRS[sf, ]
     } else {
       sf <- st_transform(sf, st_crs(WRS))
       WRS_subset <- WRS[sf,]
