@@ -7,25 +7,33 @@ import numpy as np
 
 # LOAD ALL THE CUSTOM FUNCTIONS -----------------------------------------------
 
-def csv_to_eeFeat(df, proj):
-  """Function to create an eeFeature from the location info
+def csv_to_eeFeat(df, proj, chunk, chunk_size):
+  """Function to create an eeFeature from the location data
 
   Args:
       df: point locations .csv file with Latitude and Longitude
       proj: CRS projection of the points
+      chunk: iteration through the dataframe (defined in process chunks)
+      chunk_size: number of sites in chunk
 
   Returns:
       ee.FeatureCollection of the points 
   """
   features=[]
-  for i in range(df.shape[0]):
-    x,y = df.Longitude.iloc[i],df.Latitude.iloc[i]
-    latlong = [x,y]
-    loc_properties = ({'system:index':str(df.id.iloc[i]), 
-                      'id':str(df.id.iloc[i])})
-    g = ee.Geometry.Point(latlong, proj) 
-    feature = ee.Feature(g, loc_properties)
-    features.append(feature)
+  # Calculate start and end indices for the current chunk
+  range_min = chunk_size * chunk
+  range_max = min(chunk_size * (chunk + 1), len(df)) + range_min
+  for i in range(range_min, range_max):
+    try:
+      x,y = df.Longitude[i],df.Latitude[i]
+      latlong =[x,y]
+      loc_properties = {'system:index':str(df.id[i]), 'id':str(df.id[i])}
+      g=ee.Geometry.Point(latlong, proj) 
+      feature = ee.Feature(g, loc_properties)
+      features.append(feature)
+    except KeyError as e:
+      print(f"KeyError at index {i}, skipping to next iteration")
+      continue  # skip to the next iteration
   return ee.FeatureCollection(features)
 
 
