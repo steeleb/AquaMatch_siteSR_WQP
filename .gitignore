@@ -34,6 +34,8 @@ _targets/
 5_determine_RS_visibility/run/*
 5_determine_RS_visibility/out/*
 
+6_siteSR_stack/out/*
+
 # Python environment
 env/*
 
