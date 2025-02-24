@@ -29,10 +29,12 @@ _targets/
 4_compile_sites/out/*
 4_compile_sites/nhd/*
 
-5_siteSR_stack/mid/*
-5_siteSR_stack/down/*
-5_siteSR_stack/run/*
-5_siteSR_stack/out/*
+5_determine_RS_visibility/mid/*
+5_determine_RS_visibility/down/*
+5_determine_RS_visibility/run/*
+5_determine_RS_visibility/out/*
+
+6_siteSR_stack/out/*
 
 # Python environment
 env/*
