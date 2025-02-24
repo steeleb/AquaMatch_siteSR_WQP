@@ -1,8 +1,5 @@
-# Targets list to assess site remote sensing visibility
+# Targets list to gather Landsat stack at WQP site locations
 
-# Set up python virtual environment ---------------------------------------
-
-tar_source("src/py/pySetup.R")
 
 # Source targets functions ------------------------------------------------
 
@@ -18,7 +15,7 @@ p6_siteSR_stack <- list(
   
   # make directories if needed
   tar_target(
-    name = p5_check_dir_structure,
+    name = p6_check_dir_structure,
     command = {
       directories = c("6_siteSR_stack/mid/",
                       "6_siteSR_stack/down/",
@@ -59,27 +56,33 @@ p6_siteSR_stack <- list(
     name = p6_WRS_pathrows,
     command = get_WRS_pathrows(detection_method = "site", 
                                yaml = p5_yml, 
-                               locs = p5_visible_sites),
+                               locs = p5_visible_sites,
+                               out_folder = "6_siteSR_stack/out/"),
     packages = c("readr", "sf"),
   ),
   
   # check to see that all sites and buffers are completely contained by each pathrow
   # and assign wrs path-rows for all sites based on configuration buffer.
   tar_target(
-    name = p6_add_WRS_to_site,
-    command = {
-      check_for_containment(WRS_pathrow = p6_WRS_pathrows,
-                            locations = p5_visible_sites,
-                            yaml = p5_yml)
-    },
-    pattern = map(p6_WRS_pathrows)
+    name = p6_siteSR_locs_filtered,
+    command = check_if_fully_within_pr(WRS_pathrow = p6_WRS_pathrows, 
+                                       locations = p5_visible_sites, 
+                                       yml = p5_yml),
+    pattern = map(p6_WRS_pathrows),
+    packages = c("tidyverse", "sf", "arrow")
   ),
+  
+  tar_file(
+    name = p6_siteSR_script,
+    command = "6_siteSR_stack/py/run_siteSR_per_pathrow.py"
+  ), 
   
   # Run EE siteSR pull pull 
   tar_target(
     name = p6_run_siteSR,
     command = {
-      p6_add_WRS_to_site
+      p6_siteSR_script
+      p6_siteSR_locs_filtered
       run_siteSR_per_pathrow(WRS_pathrow = p6_WRS_pathrows)
     },
     pattern = p6_WRS_pathrows,
@@ -92,7 +95,7 @@ p6_siteSR_stack <- list(
     name = p6_siteSR_tasks_complete,
     command = {
       p6_run_siteSR
-      source_python("6_siteSR_stack/py/wait_for_completion.py")
+      source_python("5_determine_RS_visiblity/py/wait_for_completion.py")
     },
     packages = "reticulate",
     deployment = "main"

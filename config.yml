@@ -11,8 +11,11 @@ default:
   # The local directory where the harmonize {targets} pipeline is located (i.e.,
   # the pipeline that runs the harmonize step)
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in lowercase separated by ","
+  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in 
+  # lowercase separated by "," current options: chla, sdd, doc, tss
   run_date: "20250219"
+  run_pekel: TRUE
+  run_GEE: TRUE
   chla_use_stable: FALSE
   chla_match_make_stable: FALSE
   sdd_use_stable: FALSE
@@ -30,6 +33,8 @@ use_stable:
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
   parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in lowercase separated by ","
   run_date: "20250113"
+  run_pekel: FALSE
+  run_GEE: FALSE
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   chla_match_make_stable: TRUE
@@ -49,6 +54,8 @@ admin_update:
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
   parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in lowercase separated by ","
   run_date: "20250219"
+  run_pekel: TRUE
+  run_GEE: TRUE
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   chla_match_make_stable: TRUE

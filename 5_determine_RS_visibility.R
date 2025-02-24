@@ -1,9 +1,5 @@
 # Targets list to assess site remote sensing visibility
 
-# Set up python virtual environment ---------------------------------------
-
-tar_source("src/py/pySetup.R")
-
 # Source targets functions ------------------------------------------------
 
 tar_source(files = "5_determine_RS_visibility/src/")
@@ -48,7 +44,8 @@ p5_determine_RS_visibility <- list(
   # load, format, save yml as a csv, depends on config_file target
   tar_target(
     name = p5_yml,
-    command = format_yaml(yaml = p5_config_file)
+    command = format_yaml(yaml = p5_config_file,
+                          out_folder = "5_determine_RS_visibility/run/")
   ),
   
   # Check for GEE export subfolder, create if not present
@@ -92,10 +89,12 @@ p5_determine_RS_visibility <- list(
   
   # load, format, save locations, depends on p4_sites_with_NHD_attribution target
   tar_target(
-    name = p5_locs,
+    name = p5_pekel_locs,
     command = {
-      p4_WQP_site_NHD_info
-      grab_locs(yaml = p5_yml)
+      p4_harmonized_sites
+      grab_locs(yaml = p5_yml,
+                type = "pekel",
+                out_folder = "5_determine_RS_visibility/run/")
     },
   ),
   
@@ -104,7 +103,8 @@ p5_determine_RS_visibility <- list(
     name = p5_WRS_pathrows,
     command = get_WRS_pathrows(detection_method = "site", 
                                yaml = p5_yml, 
-                               locs = p5_locs),
+                               locs = p5_pekel_locs,
+                               out_folder = "5_determine_RS_visibility/out/"),
     packages = c("readr", "sf"),
   ),
   
@@ -114,7 +114,7 @@ p5_determine_RS_visibility <- list(
     name = p5_add_WRS_to_site,
     command = {
       check_for_containment(WRS_pathrow = p5_WRS_pathrows,
-                            locations = p5_locs,
+                            locations = p5_pekel_locs,
                             yaml = p5_yml)
     },
     pattern = map(p5_WRS_pathrows)
@@ -137,6 +137,12 @@ p5_determine_RS_visibility <- list(
   
   # assess visibility of sites ----------------------------------------------
   
+  # track pekel script for changes
+  tar_file(
+    name = p5_pekel_script,
+    command = "5_determine_RS_visibility/py/run_pekel_per_pathrow.py"
+  ),
+  
   # Run pekel pull - this is broken up by 5k sites in the script, so it takes
   # a bit of time.
   tar_target(
@@ -144,6 +150,7 @@ p5_determine_RS_visibility <- list(
     command = {
       p5_sites_for_pekel
       p5_yml
+      p5_pekel_script
       run_pekel_per_pathrow(WRS_pathrow = p5_WRS_pathrows)
     },
     pattern = p5_WRS_pathrows,
@@ -214,10 +221,11 @@ p5_determine_RS_visibility <- list(
   tar_target(
     name = p5_visible_sites,
     command = {
+      p6_check_dir_structure
       visible_sites <- p5_pekel_collated %>% 
         filter(occurrence_max >= 80) 
       # save the file and return the dataframe
-      write_csv(visible_sites, "5_determine_RS_visibility/run/visible_locs_with_WRS.csv")
+      write_csv(visible_sites, "6_siteSR_stack/run/visible_locs_with_WRS.csv")
       visible_sites
     }
   ),

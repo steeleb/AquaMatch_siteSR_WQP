@@ -5,9 +5,11 @@
 # indicated. All inputs are case-sensitive.
 
 local_settings:
-- data_dir: "~/Documents/GitHub/AquaMatch_siteSR_WQP/4_compile_sites/out/" # point to the *full* directory path where your location 
+- pekel_data_dir: "~/Documents/GitHub/AquaMatch_siteSR_WQP/4_compile_sites/out/" # point to the *full* directory path where your location 
 # information is stored - this path must end with a '/'
-- location_file: "collated_WQP_sites.csv" # name of the *.csv* file that contains the location information
+- pekel_location_file: "distinct_WQP_sites.csv" # name of the *.csv* file that contains the location information
+- siteSR_data_dir: "~/Documents/GitHub/AquaMatch_siteSR_WQP/5_determine_RS_visibility/run/" # point to the *full* directory path where your location 
+- siteSR_location_file: "visible_locs_with_WRS.csv"
 - unique_id: "siteSR_id" # this is the column that stores the unique identifier for each 
 # site or polygon and should not contain any special characters
 - latitude: "WGS84_Latitude" # this is the column that stores the latitude of the site, must 

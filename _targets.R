@@ -7,11 +7,17 @@ library(reticulate)
 library(crew)
 
 
+# Set up python virtual environment ---------------------------------------
+
+tar_source("python/pySetup.R")
+
+
 # Set up crew controller for multicore processing ------------------------
 controller_cores <- crew_controller_local(
   workers = parallel::detectCores()-1,
   seconds_idle = 12
 )
+
 
 # Set target options: ---------------------------------------
 
@@ -25,7 +31,6 @@ tar_option_set(
 )
 
 
-
 # Define targets workflow -------------------------------------------------
 
 # Run the R scripts with custom functions:
@@ -33,6 +38,7 @@ tar_source(files = c(
   "src/",
   "4_compile_sites.R",
   "5_determine_RS_visibility.R",
+  "6_siteSR_stack.R",
   "99_compile_drive_ids.R"))
 
 # The list of targets/steps
@@ -352,9 +358,9 @@ config_targets <- list(
         retrieve_data(target = "p3_tss_harmonized_site_info",
                       id_df = p3_tss_drive_ids,
                       local_folder = "4_compile_sites/in",
-                      stable = p0_siteSR_config$doc_use_stable,
+                      stable = p0_siteSR_config$tss_use_stable,
                       google_email = p0_siteSR_config$google_email,
-                      stable_date = p0_siteSR_config$doc_stable_date)
+                      stable_date = p0_siteSR_config$tss_stable_date)
       } else {
         NULL
       }
@@ -369,4 +375,5 @@ config_targets <- list(
 c(config_targets,
   p4_compile_sites,
   p5_determine_RS_visibility,
+  p6_siteSR_stack,
   p99_compile_drive_ids)

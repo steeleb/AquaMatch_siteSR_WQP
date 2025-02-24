@@ -48,14 +48,21 @@ p4_compile_sites <- list(
       distinct <- distinct %>% 
         filter(!MonitoringLocationIdentifier %in% duplicated$MonitoringLocationIdentifier)
       # now join those back together
-      bind_rows(duplicated, distinct)
+      bind_rows(duplicated, distinct) %>% 
+        # and add id column
+        rowid_to_column("siteSR_id")
     },
   ), 
   
   # Project and transform sites as needed
   tar_target(
     name = p4_harmonized_sites,
-    command = harmonize_crs(sites = p4_distinct_sites),
+    command = {
+      harmonized_crs <- harmonize_crs(sites = p4_distinct_sites) 
+      write_csv(harmonized_crs, 
+                "4_compile_sites/out/distinct_WQP_sites.csv")
+      harmonized_crs
+      },
     packages = c("tidyverse", "sf"),
   ),
   
@@ -134,8 +141,7 @@ p4_compile_sites <- list(
                                   p4_add_NHD_flowline_info) %>% 
         # add in spatial info from above
         full_join(p4_add_HUC8, .) %>% 
-        st_drop_geometry() %>% 
-        rowid_to_column("siteSR_id")
+        st_drop_geometry()
       # turns out there are a few overlapping NHD waterbody polygons that create 
       # a handful of extra rows here. For the purposes of this workflow, we'll 
       # just grab the larger of the two overlapping polygons. 
@@ -147,7 +153,7 @@ p4_compile_sites <- list(
         mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),
                flag_wb = if_else(is.na(flag_fl), 4, flag_fl))
       write_csv(collated_sites, 
-                "4_compile_sites/out/collated_WQP_sites.csv")
+                "4_compile_sites/out/collated_WQP_sites_with_metadata.csv")
       collated_sites
     },
   ),

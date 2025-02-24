@@ -5,11 +5,13 @@
 #' 
 #' @param yaml user-specified file containing configuration details for the
 #' pull read in using read_yaml
+#' @param out_folder folder path where the output should be saved
+#' 
 #' @returns dataframe of the reformatted yaml file. Silently saves 
-#' the .csv in the `5_siteSR_stack/run/` directory path.
+#' the .csv in the `out_folder` directory path.
 #' 
 #' 
-format_yaml <-  function(yaml) {
+format_yaml <-  function(yaml, out_folder) {
   # create a nested tibble from the yaml file
   nested <-  map_dfr(names(yaml), 
                      function(x) {
@@ -32,7 +34,7 @@ format_yaml <-  function(yaml) {
     select(desc, param) %>% 
     pivot_wider(names_from = desc, 
                 values_from = param)
-  write_csv(unnested, "5_siteSR_stack/run/yml.csv")
+  write_csv(unnested, file.path(out_folder, "yml.csv"))
   unnested
 }
 
