@@ -3,6 +3,7 @@
 
 # Source targets functions ------------------------------------------------
 
+tar_source(files = "5_determine_RS_visibility/src/")
 tar_source(files = "6_siteSR_stack/src/")
 
 
@@ -81,6 +82,7 @@ p6_siteSR_stack <- list(
   tar_target(
     name = p6_run_siteSR,
     command = {
+      p5_yml
       p6_siteSR_script
       p6_siteSR_locs_filtered
       run_siteSR_per_pathrow(WRS_pathrow = p6_WRS_pathrows)

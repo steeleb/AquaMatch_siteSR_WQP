@@ -165,7 +165,7 @@ def process_subset(df_subset, chunk, chunk_size, wrs_pathrow):
     return ()
 
 
-def process_dataframe_in_chunks(df, wrs_pathrow, chunk_size=5000):
+def process_dataframe_in_chunks(df, wrs_pathrow, chunk_size = 5000):
     """
     Process a DataFrame in chunks of specified size.
     

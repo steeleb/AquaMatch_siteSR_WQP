@@ -22,7 +22,7 @@ for task in ts:
 while (n_active > 0):
   # if it is, wait 2 minutes
   time.sleep(120)
-  # and then repoeat!
+  # and then repeat!
   ts = list(ee.batch.Task.list())
   n_active = 0
   for task in ts:
