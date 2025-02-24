@@ -131,7 +131,7 @@ def get_occurrence(point):
   pekclip = pekel.clip(buff_point)
   # Reduce the buffer to pekel min and max
   pekMM = pekclip.reduceRegion(ee.Reducer.minMax(), buff_point, 30)
-  # Add another reducer to get the median pekel occurnce
+  # Add another reducer to get the median pekel occurence
   pekMed = pekclip.reduceRegion(ee.Reducer.median(), buff_point, 30)
   # Define the output features
   out = (point.set({'occurrence_max': pekMM.get('occurrence_max')})
