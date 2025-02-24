@@ -10,41 +10,38 @@
 #' the `HUCEightDigitCode` column populated.
 #' 
 #' @returns a simple feature object with `HUCEightDigitCode` populated if the 
-#' sites are associated with a HUC8.
+#' sites are associated with a HUC8. Silently saves a file of sites that could
+#' not be resolved to `4_compile_sites/out/sites_unable_to_assign_HUC08.csv`
 #' 
 #' 
 add_HUC8_to_sites <- function(sites_without_HUC) {
-  # point to the nhdplushr MapServer url
-  nhd_plus_hr_url <- "https://hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer"
-  # open that connection
-  nhd_hr <- arc_open(nhd_plus_hr_url)
-  # grab the NHD huc12 layer using the mapserver
-  huc12 <- get_layer(nhd_hr, 12)
-  
   # for each site, get the HUC8 associated with it and assign that value to the
   # upstream dataset 
-  sites_without_HUC %>% 
+  HUC08_assigned <- sites_without_HUC %>% 
     rowid_to_column() %>% 
     split(f = .$rowid) %>% 
     map(.x = .,
         .f = ~ {
           tryCatch({
-            one_huc12 <- arc_select(huc12,
-                                    filter_geom = .x %>% st_as_sfc())
-            # as long as there are rows in the one_huc12, assign the huc8 to the appropriate column
-            if (nrow(one_huc12) > 0) {
-              .x$HUCEightDigitCode <- str_sub(one_huc12$huc12, 1, 8)
-              return(.x)
-            } else {
-              # and if there is nothing there, just return the site without additional info
-              return(.x)
-            }
+            # we can use the nhdplusTools package to grab this
+            one_huc <- get_huc(.x, type = "huc08")
+            .x$HUCEightDigitCode <- one_huc$huc8
+            return(.x)
           },
           error = function(e) {
-            # if this errors for some reason, return the point, without HUC assigned
+            # if this errors because no HUC8 is available, return the point, 
+            # without HUC assigned.
             return(.x)
           }
           )}) %>%  
     bind_rows() %>% 
-    select(-rowid)
+    select(-rowid) %>% 
+    filter(!is.na(HUCEightDigitCode))
+  # make a list of the sites that couldn't be assigned
+  failed_to_assign <- sites_without_HUC %>% 
+    filter(!MonitoringLocationIdentifier %in% HUC08_assigned$MonitoringLocationIdentifier)
+  # save to file
+  write_csv(failed_to_assign, "4_compile_sites/out/sites_unable_to_assign_HUC08.csv")
+  # return assigned file
+  bind_rows(HUC08_assigned, failed_to_assign)
 }
