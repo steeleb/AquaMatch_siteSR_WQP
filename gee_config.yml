@@ -5,9 +5,11 @@
 # indicated. All inputs are case-sensitive.
 
 local_settings:
-- data_dir: "~/Documents/GitHub/AquaMatch_siteSR_WQP/4_compile_sites/out/" # point to the *full* directory path where your location 
+- pekel_data_dir: "~/Documents/GitHub/AquaMatch_siteSR_WQP/4_compile_sites/out/" # point to the *full* directory path where your location 
 # information is stored - this path must end with a '/'
-- location_file: "collated_WQP_sites.csv" # name of the *.csv* file that contains the location information
+- pekel_location_file: "distinct_WQP_sites.csv" # name of the *.csv* file that contains the location information
+- siteSR_data_dir: "~/Documents/GitHub/AquaMatch_siteSR_WQP/5_determine_RS_visibility/run/" # point to the *full* directory path where your location 
+- siteSR_location_file: "visible_locs_with_WRS.csv"
 - unique_id: "siteSR_id" # this is the column that stores the unique identifier for each 
 # site or polygon and should not contain any special characters
 - latitude: "WGS84_Latitude" # this is the column that stores the latitude of the site, must 
@@ -22,11 +24,11 @@ google_settings:
 # credentials
 - proj: "siteSR" # this is a short name for file naming conventions. All output 
 # files will include this prefix.
-- proj_folder: "siteSR_prelim" # this is the folder name where the GEE data will be save to 
+- proj_folder: "AquaMatch_siteSR" # this is the folder name where the GEE data will be save to 
 # Google Drive. If it doesn't exist, it will be created.
 - proj_parent_folder: "~/aquamatch_siteSR_wqp/" # this is the parent folder that the siteSR data is exported to, located at the root directory of your Google Drive
 - ee_proj: "ee-aquamatch" # this is the ee project name you are running your pulls from
-- run_date: "2025-01-13" # date of run for versioning, must be in YYYY-MM-DD foramt
+- run_date: "2025-02-19" # date of run for versioning, must be in YYYY-MM-DD foramt
 
 temporal_settings: 
 - start_date: "1983-01-01" # earliest data of satellite data to be acquired; 

@@ -23,8 +23,6 @@ p4_compile_sites <- list(
       })
     },
     cue = tar_cue("always"),
-    priority = 1,
-    deployment = "main"
   ),
   
   # Get unique sites from parameter files -------------------------------------
@@ -36,7 +34,8 @@ p4_compile_sites <- list(
       # combine across all site infos, but only retain distinct rows. 
       distinct <- bind_rows(list(p3_chla_harmonized_site_info, 
                                  p3_sdd_harmonized_site_info,
-                                 p3_doc_harmonized_site_info)) %>% 
+                                 p3_doc_harmonized_site_info,
+                                 p3_tss_harmonized_site_info)) %>% 
         # need to coerce lat/lon to numeric in order to properly find
         # distinct sites
         mutate(across(c(LatitudeMeasure, LongitudeMeasure),
@@ -49,17 +48,22 @@ p4_compile_sites <- list(
       distinct <- distinct %>% 
         filter(!MonitoringLocationIdentifier %in% duplicated$MonitoringLocationIdentifier)
       # now join those back together
-      bind_rows(duplicated, distinct)
+      bind_rows(duplicated, distinct) %>% 
+        # and add id column
+        rowid_to_column("siteSR_id")
     },
-    deployment = "main"
   ), 
   
   # Project and transform sites as needed
   tar_target(
     name = p4_harmonized_sites,
-    command = harmonize_crs(sites = p4_distinct_sites),
+    command = {
+      harmonized_crs <- harmonize_crs(sites = p4_distinct_sites) 
+      write_csv(harmonized_crs, 
+                "4_compile_sites/out/distinct_WQP_sites.csv")
+      harmonized_crs
+      },
     packages = c("tidyverse", "sf"),
-    deployment = "main"
   ),
   
   # Associate location with NHD waterbody and flowline ------------------------
@@ -85,7 +89,6 @@ p4_compile_sites <- list(
         mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
     },
     packages = c("tidyverse", "sf", "nhdplusTools"),
-    deployment = "main"
   ),
   
   # Create the unique HUCs to map over, but drop those where a HUC4 was not 
@@ -93,14 +96,16 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_HUC4_list,
     command = unique(str_sub(na.omit(p4_add_HUC8$HUCEightDigitCode), 1, 4)),
-    deployment = "main"
   ),
   
   # Get the waterbodies associated with each lake/reservoir site by HUC4
   tar_target(
     name = p4_add_NHD_waterbody_info,
-    command = add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
-                                         huc4 = p4_HUC4_list),
+    command = {
+      p4_check_dir_structure
+      add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
+                                         huc4 = p4_HUC4_list)
+      },
     pattern = map(p4_HUC4_list),
     packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
   ),
@@ -108,8 +113,11 @@ p4_compile_sites <- list(
   # Calculate the closest flowline to each river/stream/res/lake/pond site by HUC4
   tar_target(
     name = p4_add_NHD_flowline_info,
-    command = add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
-                                        huc4 = p4_HUC4_list), 
+    command = {
+      p4_check_dir_structure
+      add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
+                                        huc4 = p4_HUC4_list)
+      }, 
     pattern = map(p4_HUC4_list),
     packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
   ),
@@ -127,13 +135,13 @@ p4_compile_sites <- list(
   tar_target(
     name = p4_WQP_site_NHD_info,
     command = {
+      p4_check_dir_structure
       # join the data together
       collated_sites <- full_join(p4_add_NHD_waterbody_info, 
                                   p4_add_NHD_flowline_info) %>% 
         # add in spatial info from above
         full_join(p4_add_HUC8, .) %>% 
-        st_drop_geometry() %>% 
-        rowid_to_column("siteSR_id")
+        st_drop_geometry()
       # turns out there are a few overlapping NHD waterbody polygons that create 
       # a handful of extra rows here. For the purposes of this workflow, we'll 
       # just grab the larger of the two overlapping polygons. 
@@ -145,10 +153,9 @@ p4_compile_sites <- list(
         mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),
                flag_wb = if_else(is.na(flag_fl), 4, flag_fl))
       write_csv(collated_sites, 
-                "4_compile_sites/out/collated_WQP_sites.csv")
+                "4_compile_sites/out/collated_WQP_sites_with_metadata.csv")
       collated_sites
     },
-    deployment = "main"
   ),
   
   # save this target as an .RDS in Drive, no need for this to be versioned at this time
@@ -157,13 +164,12 @@ p4_compile_sites <- list(
     command = {
       p0_check_targets_drive
       export_single_target(target = p4_WQP_site_NHD_info,
-                                   drive_path = "~/aquamatch_siteSR_wqp/targets/",
-                                   stable = FALSE,
-                                   google_email = p0_siteSR_config$google_email,
-                                   date_stamp = p0_siteSR_config$run_date)
-      },
+                           drive_path = "~/aquamatch_siteSR_wqp/targets/",
+                           stable = FALSE,
+                           google_email = p0_siteSR_config$google_email,
+                           date_stamp = p0_siteSR_config$run_date)
+    },
     packages = c("tidyverse", "googledrive"),
-    deployment = "main"
   )
   
 )
