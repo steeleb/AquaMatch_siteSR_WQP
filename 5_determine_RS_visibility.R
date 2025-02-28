@@ -48,25 +48,7 @@ p5_determine_RS_visibility <- list(
                           out_folder = "5_determine_RS_visibility/run/")
   ),
   
-  # Check for GEE export subfolder, create if not present
-  tar_target(
-    name = p5_check_GEE_folder,
-    command = {
-      p0_check_drive_parent_folder
-      tryCatch({
-        drive_auth(p0_siteSR_config$google_email)
-        drive_ls(p5_yml$proj_folder)
-      }, error = function(e) {
-        # if the outpath doesn't exist, create it
-        drive_mkdir(name = p5_yml$proj_folder,
-                    path = p0_siteSR_config$drive_project_folder)
-      })
-    },
-    packages = "googledrive",
-    cue = tar_cue("always")
-  ),
-  
-  # Check for GEE export subfolder, create if not present
+  # Check for GEE export subfolder for pekel, create if not present
   tar_target(
     name = p5_check_pekel_folder,
     command = {
@@ -223,7 +205,8 @@ p5_determine_RS_visibility <- list(
     command = {
       p6_check_dir_structure
       visible_sites <- p5_pekel_collated %>% 
-        filter(occurrence_max >= 80) 
+        filter(occurrence_max >= 80) %>% 
+        distinct()
       # save the file and return the dataframe
       write_csv(visible_sites, "6_siteSR_stack/run/visible_locs_with_WRS.csv")
       visible_sites

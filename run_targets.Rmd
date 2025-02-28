@@ -19,7 +19,7 @@ siteSR_WQP relies on a configuration file (`config.yml`) to run specific
 profiles that determine what operations are being run. The file contains three
 configuration profiles: "default", "admin_update", and "use_stable".
 
--   "default" runs the pipeline without using any publicaly-stable versions of
+-   "default" runs the pipeline without using any publicly-stable versions of
     datasets made with AquaMatch_harmonize_WQP. This requires that the
     AquaMatch_harmonize_WQP pipeline has been run locally.
 
@@ -112,7 +112,7 @@ to successfully run this workflow.
 ```{r run_targets, echo = F}
 library(targets)
 
-tar_make(p99_make_target_ids)
+#tar_make()
 
-tar_visnetwork()
+#tar_visnetwork()
 ```
