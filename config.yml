@@ -11,8 +11,11 @@ default:
   # The local directory where the harmonize {targets} pipeline is located (i.e.,
   # the pipeline that runs the harmonize step)
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd,doc" # any combination of harmonized parameters in lowercase separated by ","
-  run_date: "20250113"
+  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in 
+  # lowercase separated by "," current options: chla, sdd, doc, tss
+  run_date: "20250219"
+  run_pekel: TRUE
+  run_GEE: TRUE
   chla_use_stable: FALSE
   chla_match_make_stable: FALSE
   sdd_use_stable: FALSE
@@ -28,37 +31,45 @@ use_stable:
   use_stable_handoff: TRUE
   handoff_stable_date: ""
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd,doc" # any combination of harmonized parameters in lowercase separated by ","
+  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in lowercase separated by ","
   run_date: "20250113"
+  run_pekel: FALSE
+  run_GEE: FALSE
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   chla_match_make_stable: TRUE
-  chla_match_date: "20241220"
+  chla_match_date: "20250219"
   sdd_use_stable: TRUE
   sdd_stable_date: "20240701"
   sdd_match_make_stable: TRUE
-  sdd_match_date: "20241220"
+  sdd_match_date: "20250219"
   doc_use_stable: TRUE
   doc_stable_date: "20240701"
   doc_match_make_stable: TRUE
-  doc_match_date: "20241220"
+  doc_match_date: "20250219"
   drive_project_folder: ""
 # Update the stable dataset version for one or more parameters
 admin_update:
   google_email: "therossyndicate@gmail.com"
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  parameters: "chla,sdd,doc" # any combination of harmonized parameters in lowercase separated by ","
-  run_date: "20250113"
+  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in lowercase separated by ","
+  run_date: "20250219"
+  run_pekel: TRUE
+  run_GEE: TRUE
   chla_use_stable: TRUE
   chla_stable_date: "20240701"
   chla_match_make_stable: TRUE
-  chla_match_date: "20241220"
+  chla_match_date: "20250219"
   sdd_use_stable: TRUE
   sdd_stable_date: "20240701"
   sdd_match_make_stable: TRUE
-  sdd_match_date: "20241220"
+  sdd_match_date: "20250219"
   doc_use_stable: TRUE
   doc_stable_date: "20240701"
   doc_match_make_stable: TRUE
-  doc_match_date: "20241220"
+  doc_match_date: "20250219"
+  tss_use_stable: TRUE
+  tss_stable_date: "20250131"
+  tss_match_make_stable: TRUE
+  tss_match_date: "20250219"
   drive_project_folder: "~/aquamatch_siteSR_wqp/"

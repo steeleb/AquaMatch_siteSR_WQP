@@ -7,26 +7,37 @@ import numpy as np
 
 # LOAD ALL THE CUSTOM FUNCTIONS -----------------------------------------------
 
-def csv_to_eeFeat(df, proj):
-  """Function to create an eeFeature from the location info
+def csv_to_eeFeat(df, proj, chunk, chunk_size):
+    """Function to create an eeFeature from the location data
 
-  Args:
-      df: point locations .csv file with Latitude and Longitude
-      proj: CRS projection of the points
+    Args:
+        df: point locations .csv file with Latitude and Longitude
+        proj: CRS projection of the points
+        chunk: iteration through the dataframe (defined in process chunks)
+        chunk_size: number of sites in chunk
 
-  Returns:
-      ee.FeatureCollection of the points 
-  """
-  features=[]
-  for i in range(df.shape[0]):
-    x,y = df.Longitude.iloc[i],df.Latitude.iloc[i]
-    latlong = [x,y]
-    loc_properties = ({'system:index':str(df.id.iloc[i]), 
-                      'id':str(df.id.iloc[i])})
-    g = ee.Geometry.Point(latlong, proj) 
-    feature = ee.Feature(g, loc_properties)
-    features.append(feature)
-  return ee.FeatureCollection(features)
+    Returns:
+        ee.FeatureCollection of the points 
+    """
+    features = []
+    # Calculate start and end indices for the current chunk
+    range_min = chunk_size * chunk
+    range_max = min(chunk_size * (chunk + 1), len(df))
+    
+    for i in range(range_min, range_max):
+        try:
+            row = df.iloc[i]
+            x, y = row['Longitude'], row['Latitude']
+            latlong = [x, y]
+            loc_properties = {'system:index': str(row['id']), 'id': str(row['id'])}
+            g = ee.Geometry.Point(latlong, proj)
+            feature = ee.Feature(g, loc_properties)
+            features.append(feature)
+        except KeyError as e:
+            print(f"KeyError at index {i}, skipping to next iteration")
+            continue  # skip to the next iteration
+    
+    return ee.FeatureCollection(features)
 
 
 def maximum_no_of_tasks(MaxNActive, waitingPeriod):
@@ -59,7 +70,7 @@ def maximum_no_of_tasks(MaxNActive, waitingPeriod):
 
 
 # get locations and yml from data folder
-yml = pd.read_csv('5_siteSR_stack/run/yml.csv')
+yml = pd.read_csv('5_determine_RS_visibility/run/yml.csv')
 
 eeproj = yml['ee_proj'][0]
 #initialize GEE
@@ -79,11 +90,11 @@ extent = (yml['extent'][0]
   .split('+'))
   
 # get current pathrow
-with open('5_siteSR_stack/run/current_pathrow.txt', 'r') as file:
+with open('5_determine_RS_visibility/run/current_pathrow.txt', 'r') as file:
   pathrows = file.read()
 
 # read locations and filtere for this pathrow
-locations = (pd.read_csv('5_siteSR_stack/run/locs_with_wrs_for_pekel.csv', 
+locations = (pd.read_csv('5_determine_RS_visibility/run/locs_with_wrs_for_pekel.csv', 
                       dtype = ({"id": np.int32, 
                                 "Latitude": np.float64, 
                                 "Longitude": np.float64, 
@@ -120,7 +131,7 @@ def get_occurrence(point):
   pekclip = pekel.clip(buff_point)
   # Reduce the buffer to pekel min and max
   pekMM = pekclip.reduceRegion(ee.Reducer.minMax(), buff_point, 30)
-  # Add another reducer to get the median pekel occurrence
+  # Add another reducer to get the median pekel occurence
   pekMed = pekclip.reduceRegion(ee.Reducer.median(), buff_point, 30)
   # Define the output features
   out = (point.set({'occurrence_max': pekMM.get('occurrence_max')})
@@ -130,16 +141,16 @@ def get_occurrence(point):
 
 
 # Map the get_occurrence function over the 5000 or so created sites
-def process_subset(df_subset, chunk, wrs_pathrow):
+def process_subset(df_subset, chunk, chunk_size, wrs_pathrow):
     """
     This function processes a subset of the DataFrame.
     Replace this with your actual processing function.
     """
 
-    locs_feature = csv_to_eeFeat(df_subset, yml['location_crs'][0])
+    locs_feature = csv_to_eeFeat(df_subset, yml['location_crs'][0], chunk, chunk_size)
 
     outdata = locs_feature.map(get_occurrence)
-    # Define a data export 
+    #Define a data export 
     dataOut = (ee.batch.Export.table.toDrive(collection = outdata,
                                             description = "Pekel_Visibility_" + wrs_pathrow + "_" + str(chunk),
                                             folder = out_folder,
@@ -179,12 +190,13 @@ def process_dataframe_in_chunks(df, wrs_pathrow, chunk_size = 5000):
         # Subset the DataFrame
         df_subset = df.iloc[start_idx:end_idx]
         
-        # Process the subset
-        process_subset(df_subset, i, wrs_pathrow)
-        
-        print(f"Processed chunk {i+1}/{num_chunks}")
+        # Process the subset and store the result
+        result = process_subset(df_subset, i, chunk_size, wrs_pathrow)
+
+        print(f"Sent chunk {i+1}/{num_chunks}")
     
-    return (None)
+    return ()
+
 
 
 # and then actualy process the chunks!

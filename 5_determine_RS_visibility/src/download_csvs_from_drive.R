@@ -18,7 +18,7 @@
 #' function. Defaults to NULL.
 #' 
 #' @returns downloads .csvs from the specified folder name to the
-#' `local_folder` filepath. If file_type is set to default, all 
+#' `local_folder`. If file_type is set to default, all 
 #' files from the folder specified in the yml will be downloaded.
 #' 
 #' 

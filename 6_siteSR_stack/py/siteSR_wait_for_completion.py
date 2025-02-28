@@ -3,7 +3,7 @@ from pandas import read_csv
 import time
 
 # get configs from yml file
-yml = read_csv("5_siteSR_stack/run/yml.csv")
+yml = read_csv("5_determine_RS_visibility/run/yml.csv")
 # assign proj
 eeproj = yml["ee_proj"][0]
 #initialize GEE with proj
@@ -22,7 +22,7 @@ for task in ts:
 while (n_active > 0):
   # if it is, wait 2 minutes
   time.sleep(120)
-  # and then repeat!
+  # and then repoeat!
   ts = list(ee.batch.Task.list())
   n_active = 0
   for task in ts:

@@ -3,12 +3,13 @@
 # Load packages required to define the pipeline:
 library(targets)
 library(tarchetypes)
-
-# Load packages required to define the pipeline:
-library(targets)
-library(tarchetypes)
 library(reticulate)
 library(crew)
+
+
+# Set up python virtual environment ---------------------------------------
+
+tar_source("python/pySetup.R")
 
 
 # Set up crew controller for multicore processing ------------------------
@@ -16,6 +17,7 @@ controller_cores <- crew_controller_local(
   workers = parallel::detectCores()-1,
   seconds_idle = 12
 )
+
 
 # Set target options: ---------------------------------------
 
@@ -29,14 +31,14 @@ tar_option_set(
 )
 
 
-
 # Define targets workflow -------------------------------------------------
 
 # Run the R scripts with custom functions:
 tar_source(files = c(
   "src/",
   "4_compile_sites.R",
-  "5_siteSR_stack.R",
+  "5_determine_RS_visibility.R",
+  "6_siteSR_stack.R",
   "99_compile_drive_ids.R"))
 
 # The list of targets/steps
@@ -69,6 +71,12 @@ config_targets <- list(
     name = p0_doc_output_path,
     command = paste0(p0_siteSR_config$drive_project_folder,
                      "doc/")
+  ), 
+  
+  tar_target(
+    name = p0_tss_output_path,
+    command = paste0(p0_siteSR_config$drive_project_folder,
+                     "tss/")
   ), 
   
   # Check for Google Drive folder for siteSR output path, create it if it
@@ -142,6 +150,27 @@ config_targets <- list(
         drive_mkdir(name = "stable",
                     path = paste0(p0_siteSR_config$drive_project_folder,
                                   "doc"))
+      })
+    },
+    packages = "googledrive",
+    cue = tar_cue("always")
+  ),
+  
+  # Check for tss subfolder, create if not present
+  tar_target(
+    name = p0_check_tss_drive,
+    command = {
+      p0_check_drive_parent_folder
+      tryCatch({
+        drive_auth(p0_siteSR_config$google_email)
+        drive_ls(p0_tss_output_path)
+      }, error = function(e) {
+        # if the outpath doesn't exist, create it along with a "stable" subfolder
+        drive_mkdir(name = "tss",
+                    path = p0_siteSR_config$drive_project_folder)
+        drive_mkdir(name = "stable",
+                    path = paste0(p0_siteSR_config$drive_project_folder,
+                                  "tss"))
       })
     },
     packages = "googledrive",
@@ -249,6 +278,21 @@ config_targets <- list(
     read = read_csv(file = !!.x)
   ),
   
+  tar_file_read(
+    name = p3_tss_drive_ids,
+    command = {
+      p0_check_tss_drive
+      if(grepl("tss", p0_siteSR_config$parameters)) {
+        paste0(p0_AquaMatch_harmonize_WQP_directory,
+               "3_harmonize/out/tss_drive_ids.csv") 
+      } else {
+        NULL
+      }
+    },
+    cue = tar_cue("always"),
+    read = read_csv(file = !!.x)
+  ),
+  
   # Google Drive IDs of exported files from the harmonize pipeline
   # Download files from Google Drive ----------------------------------------
   
@@ -267,9 +311,8 @@ config_targets <- list(
         NULL
       }
     },
-    packages = c("tidyverse", "googledrive"),
-    priority = 1
-  ),
+    packages = c("tidyverse", "googledrive")
+    ),
   
   # SDD site list
   tar_target(
@@ -286,8 +329,7 @@ config_targets <- list(
         NULL
       }
     },
-    packages = c("tidyverse", "googledrive"),
-    priority = 1
+    packages = c("tidyverse", "googledrive")
   ),
   
   # DOC site list
@@ -305,14 +347,33 @@ config_targets <- list(
         NULL
       }
     },
-    packages = c("tidyverse", "googledrive"),
-    priority = 1
+    packages = c("tidyverse", "googledrive")
+  ),  
+  
+  # TSS site list
+  tar_target(
+    name = p3_tss_harmonized_site_info,
+    command = {
+      if (grepl("tss", p0_siteSR_config$parameter)) {
+        retrieve_data(target = "p3_tss_harmonized_site_info",
+                      id_df = p3_tss_drive_ids,
+                      local_folder = "4_compile_sites/in",
+                      stable = p0_siteSR_config$tss_use_stable,
+                      google_email = p0_siteSR_config$google_email,
+                      stable_date = p0_siteSR_config$tss_stable_date)
+      } else {
+        NULL
+      }
+    },
+    packages = c("tidyverse", "googledrive")
   )
+  
   
 )
 
 # Full targets list
 c(config_targets,
   p4_compile_sites,
-  p5_siteSR_stack,
+  p5_determine_RS_visibility,
+  p6_siteSR_stack,
   p99_compile_drive_ids)

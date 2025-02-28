@@ -1,12 +1,8 @@
 # Targets list to assess site remote sensing visibility
 
-# Set up python virtual environment ---------------------------------------
-
-tar_source("src/py/pySetup.R")
-
 # Source targets functions ------------------------------------------------
 
-tar_source(files = "5_siteSR_stack/src/")
+tar_source(files = "5_determine_RS_visibility/src/")
 
 # Point to the GEE configuration file -------------------------------------
 
@@ -15,7 +11,7 @@ yaml_file <- "gee_config.yml"
 # Define {targets} workflow -----------------------------------------------
 
 # target objects in workflow
-p5_siteSR_stack <- list(
+p5_determine_RS_visibility <- list(
   
   # general configuration ---------------------------------------------------
   
@@ -23,19 +19,17 @@ p5_siteSR_stack <- list(
   tar_target(
     name = p5_check_dir_structure,
     command = {
-      directories = c("5_siteSR_stack/mid/",
-                      "5_siteSR_stack/down/",
-                      "5_siteSR_stack/run/",
-                      "5_siteSR_stack/out/")
+      directories = c("5_determine_RS_visibility/mid/",
+                      "5_determine_RS_visibility/down/",
+                      "5_determine_RS_visibility/run/",
+                      "5_determine_RS_visibility/out/")
       walk(directories, function(dir) {
         if(!dir.exists(dir)){
           dir.create(dir)
         }
       })
     },
-    cue = tar_cue("always"),
-    priority = 1,
-    deployment = "main"
+    cue = tar_cue("always")
   ),
   
   # read and track the config file
@@ -44,39 +38,17 @@ p5_siteSR_stack <- list(
     command = yaml_file,
     read = read_yaml(!!.x),
     packages = "yaml",
-    cue = tar_cue("always"),
-    deployment = "main"
+    cue = tar_cue("always")
   ),
   
   # load, format, save yml as a csv, depends on config_file target
   tar_target(
     name = p5_yml,
-    command = format_yaml(yaml = p5_config_file),
-    deployment = "main"
+    command = format_yaml(yaml = p5_config_file,
+                          out_folder = "5_determine_RS_visibility/run/")
   ),
   
-  # Check for GEE export subfolder, create if not present
-  tar_target(
-    name = p5_check_GEE_folder,
-    command = {
-      p0_check_drive_parent_folder
-      tryCatch({
-        drive_auth(p0_siteSR_config$google_email)
-        drive_ls(p5_yml$proj_folder)
-      }, error = function(e) {
-        # if the outpath doesn't exist, create it
-        drive_mkdir(name = p5_yml$proj_folder,
-                    path = p0_siteSR_config$drive_project_folder)
-      })
-    },
-    packages = "googledrive",
-    cue = tar_cue("always"),
-    error = "stop",
-    priority = 1,
-    deployment = "main"
-  ),
-  
-  # Check for GEE export subfolder, create if not present
+  # Check for GEE export subfolder for pekel, create if not present
   tar_target(
     name = p5_check_pekel_folder,
     command = {
@@ -91,10 +63,7 @@ p5_siteSR_stack <- list(
       })
     },
     packages = "googledrive",
-    cue = tar_cue("always"),
-    error = "stop",
-    priority = 1,
-    deployment = "main"
+    cue = tar_cue("always")
   ),
   
   
@@ -102,12 +71,13 @@ p5_siteSR_stack <- list(
   
   # load, format, save locations, depends on p4_sites_with_NHD_attribution target
   tar_target(
-    name = p5_locs,
+    name = p5_pekel_locs,
     command = {
-      p4_WQP_site_NHD_info
-      grab_locs(yaml = p5_yml)
+      p4_harmonized_sites
+      grab_locs(yaml = p5_yml,
+                type = "pekel",
+                out_folder = "5_determine_RS_visibility/run/")
     },
-    deployment = "main"
   ),
   
   # get WRS pathrow
@@ -115,9 +85,9 @@ p5_siteSR_stack <- list(
     name = p5_WRS_pathrows,
     command = get_WRS_pathrows(detection_method = "site", 
                                yaml = p5_yml, 
-                               locs = p5_locs),
+                               locs = p5_pekel_locs,
+                               out_folder = "5_determine_RS_visibility/out/"),
     packages = c("readr", "sf"),
-    deployment = "main"
   ),
   
   # check to see that all sites and buffers are completely contained by each pathrow
@@ -126,7 +96,7 @@ p5_siteSR_stack <- list(
     name = p5_add_WRS_to_site,
     command = {
       check_for_containment(WRS_pathrow = p5_WRS_pathrows,
-                            locations = p5_locs,
+                            locations = p5_pekel_locs,
                             yaml = p5_yml)
     },
     pattern = map(p5_WRS_pathrows)
@@ -140,7 +110,7 @@ p5_siteSR_stack <- list(
     command = {
       one_PR_per_site <- p5_add_WRS_to_site %>% 
         slice(1, .by = "id")
-      write_csv(one_PR_per_site, "5_siteSR_stack/run/locs_with_WRS_for_pekel.csv")
+      write_csv(one_PR_per_site, "5_determine_RS_visibility/run/locs_with_WRS_for_pekel.csv")
       one_PR_per_site
     },
     deployment = "main"
@@ -149,6 +119,12 @@ p5_siteSR_stack <- list(
   
   # assess visibility of sites ----------------------------------------------
   
+  # track pekel script for changes
+  tar_file(
+    name = p5_pekel_script,
+    command = "5_determine_RS_visibility/py/run_pekel_per_pathrow.py"
+  ),
+  
   # Run pekel pull - this is broken up by 5k sites in the script, so it takes
   # a bit of time.
   tar_target(
@@ -156,6 +132,7 @@ p5_siteSR_stack <- list(
     command = {
       p5_sites_for_pekel
       p5_yml
+      p5_pekel_script
       run_pekel_per_pathrow(WRS_pathrow = p5_WRS_pathrows)
     },
     pattern = p5_WRS_pathrows,
@@ -168,7 +145,7 @@ p5_siteSR_stack <- list(
     name = p5_pekel_tasks_complete,
     command = {
       p5_run_pekel
-      source_python("5_siteSR_stack/py/wait_for_completion.py")
+      source_python("5_determine_RS_visibility/py/wait_for_completion.py")
     },
     packages = "reticulate",
     deployment = "main"
@@ -195,7 +172,7 @@ p5_siteSR_stack <- list(
   
   tar_target(
     name = p5_pekel_download,
-    command = download_csvs_from_drive(local_folder = "5_siteSR_stack/down",
+    command = download_csvs_from_drive(local_folder = "5_determine_RS_visibility/down",
                                        file_type = "pekel",
                                        yml = p5_yml,
                                        drive_contents = p5_pekel_contents),
@@ -207,7 +184,7 @@ p5_siteSR_stack <- list(
     name = p5_pekel_collated,
     command = {
       p5_pekel_download
-      files <- list.files(file.path("5_siteSR_stack/down/", 
+      files <- list.files(file.path("5_determine_RS_visibility/down/", 
                                     p5_yml$run_date, 
                                     "pekel"), 
                           full.names = TRUE) 
@@ -226,10 +203,11 @@ p5_siteSR_stack <- list(
   tar_target(
     name = p5_visible_sites,
     command = {
+      p6_check_dir_structure
       visible_sites <- p5_pekel_collated %>% 
         filter(occurrence_max >= 80) 
       # save the file and return the dataframe
-      write_csv(visible_sites, "5_siteSR_stack/run/visible_locs_with_WRS.csv")
+      write_csv(visible_sites, "6_siteSR_stack/run/visible_locs_with_WRS.csv")
       visible_sites
     }
   ),
