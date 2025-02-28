@@ -205,7 +205,8 @@ p5_determine_RS_visibility <- list(
     command = {
       p6_check_dir_structure
       visible_sites <- p5_pekel_collated %>% 
-        filter(occurrence_max >= 80) 
+        filter(occurrence_max >= 80) %>% 
+        distinct()
       # save the file and return the dataframe
       write_csv(visible_sites, "6_siteSR_stack/run/visible_locs_with_WRS.csv")
       visible_sites
