@@ -3,7 +3,6 @@
 
 # Source targets functions ------------------------------------------------
 
-tar_source(files = "5_determine_RS_visibility/src/")
 tar_source(files = "6_siteSR_stack/src/")
 
 
@@ -97,7 +96,7 @@ p6_siteSR_stack <- list(
     name = p6_siteSR_tasks_complete,
     command = {
       p6_run_siteSR
-      source_python("5_determine_RS_visiblity/py/wait_for_completion.py")
+      source_python("6_siteSR_stack/py/siteSR_wait_for_completion.py")
     },
     packages = "reticulate",
     deployment = "main"
@@ -119,7 +118,9 @@ p6_siteSR_stack <- list(
       source_python(p6_failed_tasks_script)
     },
     packages = "reticulate",
-    deployment = "main"
+    deployment = "main",
+    error = "continue" # sometimes this will error out if you've completed a lot 
+    # tasks in your ee-project
   ),
   
 
@@ -139,7 +140,7 @@ p6_siteSR_stack <- list(
       drive_ls(path = drive_folder) %>% 
         select(name, id)
     },
-    packages = "googledrive"
+    packages = c("tidyverse", "googledrive")
   ), 
   
   # target with list of data segments:
@@ -200,99 +201,88 @@ p6_siteSR_stack <- list(
                                       dswe = NULL,
                                       separate_missions = FALSE,
                                       depends = p6_download_files),
+    packages = c("data.table", "tidyverse", "arrow")
+  ),
+  
+  tar_target(
+    name = p6_make_collated_point_files,
+    command = collate_csvs_from_drive(file_type = p6_mission_groups,
+                                      yml = p5_yml,
+                                      dswe = p6_dswe_types,
+                                      separate_missions = TRUE,
+                                      depends = p6_download_files),
     packages = c("data.table", "tidyverse", "arrow"),
+    pattern = cross(p6_mission_groups, p6_dswe_types)
+  ),
+
+  # Save collated files to Drive, create csv with ids -----------------------
+
+  # get list of files to save to drive
+  tar_target(
+    name = p6_collated_siteSR_files,
+    command = {
+      p6_make_collated_metadata
+      p6_make_collated_point_files
+      list.files(file.path("6_siteSR_stack/mid/",
+                           p5_yml$run_date),
+                 full.names = TRUE)
+    }
+  )
+  ,
+
+  tar_target(
+    name = p6_check_Drive_collated_folder,
+    command =  {
+      p0_check_drive_parent_folder
+      tryCatch({
+        drive_auth(p5_yml$google_email)
+        if (p5_yml$proj_parent_folder != "") {
+          parent_folder <- p5_yml$proj_parent_folder
+          version_path <- paste0(p5_yml$proj_parent_folder,
+                                    paste0("collated_raw_v", p5_yml$run_date, "/"))
+          
+        } else {
+          parent_folder <- p5_yml$proj_folder
+          version_path <- paste0(p5_yml$proj_folder,
+                                    paste0("collated_raw_v", p5_yml$run_date, "/"))
+        }
+        # check for doubles!
+        drive_ls(version_path)
+      }, error = function(e) {
+        # if there is an error, check both the 'collated_raw' folder and the 'version'
+        # folder
+        drive_mkdir(path = parent_folder, name = paste0("collated_raw_v", p5_yml$run_date))
+      })
+      return(version_path)
+    },
+    packages = "googledrive",
+    cue = tar_cue("always")
+  ),
+
+  tar_target(
+    name = p6_send_collated_files_to_drive,
+    command = export_single_file(file_path = p6_collated_siteSR_files,
+                                 drive_path = p6_check_Drive_collated_folder,
+                                 google_email = p5_yml$google_email),
+    packages = c("tidyverse", "googledrive"),
+    pattern = p6_collated_siteSR_files
+  ),
+
+  tar_target(
+    name = p6_save_collated_drive_info,
+    command = {
+      drive_ids <- p6_send_collated_files_to_drive %>%
+        select(name, id)
+      write_csv(drive_ids,
+                paste0("6_siteSR_stack/out/raw_collated_files_drive_ids_v",
+                       p5_yml$run_date,
+                       ".csv"))
+      drive_ids
+    },
+    packages = c("tidyverse", "googledrive"),
     deployment = "main"
   )
-  #,
-  
-  # # make target of first two digits of PR - basically, the files are too large
-  # # for processing without even further subset (espcially LS5 and LS7)
-  # 
-  # tar_target(
-  #   name = c_WRS_prefix,
-  #   command = unique(str_sub(b_WRS_pathrow, 1, 2))
-  # ),
-  # 
-  # tar_target(
-  #   name = c_make_collated_point_files,
-  #   command = collate_csvs_from_drive(file_type = p6_mission_groups,
-  #                                     yml = p5_yml,
-  #                                     dswe = p6_dswe_types,
-  #                                     separate_missions = TRUE,
-  #                                     depends = p6_download_files),
-  #   packages = c("data.table", "tidyverse", "arrow"),
-  #   pattern = cross(p6_mission_groups, p6_dswe_types),
-  #   deployment = "main" # do not run this mulitcore, your computer will tank.
-  # )
-  # ,
-  # 
-  # # Save collated files to Drive, create csv with ids -----------------------
-  # 
-  # # get list of files to save to drive
-  # tar_target(
-  #   name = c_collated_files,
-  #   command = {
-  #     c_make_collated_metadata
-  #     c_make_collated_point_files
-  #     list.files(file.path("c_collate_Landsat_data/mid/", 
-  #                          b_yml_poi$run_date),
-  #                full.names = TRUE)
-  #   }
-  # ),
-  # 
-  # tar_target(
-  #   name = c_check_Drive_collated_folder,
-  #   command =  {
-  #     b_check_Drive_parent_folder
-  #     tryCatch({
-  #       drive_auth(b_yml_poi$google_email)
-  #       if (b_yml_poi$parent_folder != "") {
-  #         parent_folder <- file.path("~",
-  #                                    paste0(b_yml_poi$parent_folder, "/"))
-  #         version_path <- file.path("~",
-  #                                   b_yml_poi$parent_folder, 
-  #                                   paste0("collated_raw_v", b_yml_poi$run_date, "/"))
-  #       } else {
-  #         parent_folder <- b_yml_poi$proj_folder
-  #         version_path <- file.path(b_yml_poi$proj_folder, 
-  #                                   paste0("collated_raw_v", b_yml_poi$run_date, "/"))
-  #       }
-  #       drive_ls(version_path)
-  #     }, error = function(e) {
-  #       # if there is an error, check both the 'collated_raw' folder and the 'version'
-  #       # folder
-  #       drive_mkdir(path = parent_folder, name = paste0("collated_raw_v", b_yml_poi$run_date))
-  #     })
-  #     return(version_path)
-  #   },
-  #   packages = "googledrive",
-  #   cue = tar_cue("always")    
-  # ),
-  # 
-  # tar_target(
-  #   name = c_send_collated_files_to_drive,
-  #   command = export_single_file(file_path = c_collated_files,
-  #                                drive_path = c_check_Drive_collated_folder,
-  #                                google_email = b_yml_poi$google_email),
-  #   packages = c("tidyverse", "googledrive"),
-  #   pattern = c_collated_files
-  # ),
-  # 
-  # tar_target(
-  #   name = c_save_collated_drive_info,
-  #   command = {
-  #     drive_ids <- c_send_collated_files_to_drive %>% 
-  #       select(name, id)
-  #     write_csv(drive_ids,
-  #               paste0("c_collate_Landsat_data/out/raw_collated_files_drive_ids_v",
-  #                      b_yml_poi$run_date,
-  #                      ".csv"))
-  #     drive_ids
-  #   },
-  #   packages = c("tidyverse", "googledrive"),
-  #   deployment = "main"
-  # )
-  # 
+
 )
   
   

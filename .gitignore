@@ -34,8 +34,10 @@ _targets/
 5_determine_RS_visibility/run/*
 5_determine_RS_visibility/out/*
 
+6_siteSR_stack/down/*
 6_siteSR_stack/out/*
 6_siteSR_stack/run/*
+!6_siteSR_stack/out/raw_collated_filse_drive_ids_v2025-02-24.csv
 
 # Python environment
 env/*

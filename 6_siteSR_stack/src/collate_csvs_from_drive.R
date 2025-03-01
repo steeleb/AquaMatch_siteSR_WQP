@@ -56,13 +56,13 @@ collate_csvs_from_drive <- function(file_type = NULL,
   
   # make directory path based on function arguments
   if (is.null(file_type)) {
-    from_directory <- file.path("c_collate_Landsat_data/down/", yml$run_date)
+    from_directory <- file.path("6_siteSR_stack/down/", yml$run_date)
   } else {
-    from_directory <- file.path("c_collate_Landsat_data/down/", yml$run_date, file_type)
+    from_directory <- file.path("6_siteSR_stack/down/", yml$run_date, file_type)
   }
   
   # make and store directory for collated files
-  to_directory <- file.path("c_collate_Landsat_data/mid/", yml$run_date)
+  to_directory <- file.path("6_siteSR_stack/mid/", yml$run_date)
   if (!dir.exists(to_directory)) {
     dir.create(to_directory)
   }
