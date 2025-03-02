@@ -6,13 +6,18 @@ library(tarchetypes)
 library(reticulate)
 library(crew)
 
-
 # Set up python virtual environment ---------------------------------------
 
 tar_source("python/pySetup.R")
 
 
+# Set general configuration setting: -----------------------------
+
+general_config <- "admin_update"
+
+
 # Set up crew controller for multicore processing ------------------------
+
 controller_cores <- crew_controller_local(
   workers = parallel::detectCores()-1,
   seconds_idle = 12
@@ -50,7 +55,7 @@ config_targets <- list(
   tar_target(
     name = p0_siteSR_config,
     # The config package does not like to be used with library()
-    command = config::get(config = "admin_update"),
+    command = config::get(config = general_config),
     cue = tar_cue("always")
   ),
   
@@ -184,12 +189,13 @@ config_targets <- list(
       p0_check_drive_parent_folder
       tryCatch({
         drive_auth(p0_siteSR_config$google_email)
-        drive_ls("~/aquamatch_siteSR_wqp/targets/")
+        drive_ls(paste0(p0_siteSR_config$drive_project_folder, "targets/"))
       }, error = function(e) {
         # if the outpath doesn't exist, create it along with a "stable" subfolder
         drive_mkdir(name = "targets",
                     path = p0_siteSR_config$drive_project_folder)
       })
+      return(paste0(p0_siteSR_config$drive_project_folder, "targets/"))
     },
     packages = "googledrive",
     cue = tar_cue("always")
@@ -301,30 +307,28 @@ config_targets <- list(
     name = p3_chla_harmonized_site_info,
     command = {
       if (grepl("chla", p0_siteSR_config$parameter)) {
-        retrieve_data(target = "p3_chla_harmonized_site_info",
-                      id_df = p3_chla_drive_ids,
-                      local_folder = "4_compile_sites/in",
-                      stable = p0_siteSR_config$chla_use_stable,
-                      google_email = p0_siteSR_config$google_email,
-                      stable_date = p0_siteSR_config$chla_stable_date) 
+        retrieve_target(target = "p3_chla_harmonized_site_info",
+                        id_df = p3_chla_drive_ids,
+                        local_folder = "4_compile_sites/in",
+                        google_email = p0_siteSR_config$google_email,
+                        version_date = p0_siteSR_config$chla_version_date) 
       } else {
         NULL
       }
     },
     packages = c("tidyverse", "googledrive")
-    ),
+  ),
   
   # SDD site list
   tar_target(
     name = p3_sdd_harmonized_site_info,
     command = {
       if (grepl("sdd", p0_siteSR_config$parameter)) {
-        retrieve_data(target = "p3_sdd_harmonized_site_info",
-                      id_df = p3_sdd_drive_ids,
-                      local_folder = "4_compile_sites/in",
-                      stable = p0_siteSR_config$sdd_use_stable,
-                      google_email = p0_siteSR_config$google_email,
-                      stable_date = p0_siteSR_config$sdd_stable_date)
+        retrieve_target(target = "p3_sdd_harmonized_site_info",
+                        id_df = p3_sdd_drive_ids,
+                        local_folder = "4_compile_sites/in",
+                        google_email = p0_siteSR_config$google_email,
+                        version_date = p0_siteSR_config$sdd_version_date)
       } else {
         NULL
       }
@@ -337,12 +341,11 @@ config_targets <- list(
     name = p3_doc_harmonized_site_info,
     command = {
       if (grepl("doc", p0_siteSR_config$parameter)) {
-        retrieve_data(target = "p3_doc_harmonized_site_info",
-                      id_df = p3_doc_drive_ids,
-                      local_folder = "4_compile_sites/in",
-                      stable = p0_siteSR_config$doc_use_stable,
-                      google_email = p0_siteSR_config$google_email,
-                      stable_date = p0_siteSR_config$doc_stable_date)
+        retrieve_target(target = "p3_doc_harmonized_site_info",
+                        id_df = p3_doc_drive_ids,
+                        local_folder = "4_compile_sites/in",
+                        google_email = p0_siteSR_config$google_email,
+                        version_date = p0_siteSR_config$doc_version_date)
       } else {
         NULL
       }
@@ -355,19 +358,17 @@ config_targets <- list(
     name = p3_tss_harmonized_site_info,
     command = {
       if (grepl("tss", p0_siteSR_config$parameter)) {
-        retrieve_data(target = "p3_tss_harmonized_site_info",
-                      id_df = p3_tss_drive_ids,
-                      local_folder = "4_compile_sites/in",
-                      stable = p0_siteSR_config$tss_use_stable,
-                      google_email = p0_siteSR_config$google_email,
-                      stable_date = p0_siteSR_config$tss_stable_date)
+        retrieve_target(target = "p3_tss_harmonized_site_info",
+                        id_df = p3_tss_drive_ids,
+                        local_folder = "4_compile_sites/in",
+                        google_email = p0_siteSR_config$google_email,
+                        version_date = p0_siteSR_config$tss_version_date)
       } else {
         NULL
       }
     },
     packages = c("tidyverse", "googledrive")
   )
-  
   
 )
 
