@@ -13,7 +13,7 @@ tar_source("python/pySetup.R")
 
 # Set general configuration setting: -----------------------------
 
-general_config <- "admin_update"
+general_config <- "default"
 
 
 # Set up crew controller for multicore processing ------------------------
@@ -39,12 +39,12 @@ tar_option_set(
 # Define targets workflow -------------------------------------------------
 
 # Run the R scripts with custom functions:
-tar_source(files = c(
-  "src/",
-  "4_compile_sites.R",
-  "5_determine_RS_visibility.R",
-  "6_siteSR_stack.R",
-  "99_compile_drive_ids.R"))
+tar_source(c("4_compile_sites.R",
+             "5_determine_RS_visibility.R",
+             "6_siteSR_stack.R"))
+
+# and load the global functions
+tar_source("src/")
 
 # The list of targets/steps
 config_targets <- list(
@@ -376,5 +376,4 @@ config_targets <- list(
 c(config_targets,
   p4_compile_sites,
   p5_determine_RS_visibility,
-  p6_siteSR_stack,
-  p99_compile_drive_ids)
+  p6_siteSR_stack)

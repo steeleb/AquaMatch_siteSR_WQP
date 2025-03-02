@@ -256,7 +256,7 @@ if (config::get(config = general_config)$run_pekel) {
       command = {
         get_file_ids(google_email = p5_yml$google_email,
                      drive_folder = p0_check_targets_drive, 
-                     file_path = paste0("5_determine_RS_visibility/out/visible_site_id.csv"), 
+                     file_path = "5_determine_RS_visibility/out/visible_site_id.csv", 
                      depend = p5_export_visible_sites, 
                      filter_by = "p5_visible_sites")
       },

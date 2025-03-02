@@ -26,7 +26,7 @@ retrieve_data <- function(id_df,
                           local_folder, 
                           google_email, 
                           file_type = ".feather", 
-                          version_date){
+                          version_date = NULL){
   
   message("Depending on the number and size of files, this may take some time.")
   
@@ -38,9 +38,13 @@ retrieve_data <- function(id_df,
     dir.create(local_folder, recursive = TRUE)
   }
   
-  # Filter the contents of the id_df to the desired version date
-  drive_file_ids <- id_df %>%
-    filter(grepl(pattern = version_date, x = name))
+  if (!is.null(version_date)) {
+    # Filter the contents of the id_df to the desired version date
+    drive_file_ids <- id_df %>%
+      filter(grepl(pattern = version_date, x = name))
+  } else {
+    drive_file_ids <- id_df
+  }
   
   # Run the download
   walk2(.x = drive_file_ids$id,

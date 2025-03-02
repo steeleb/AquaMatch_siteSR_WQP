@@ -3,7 +3,7 @@
 # in the siteSR dataset.
 default:
   # gmail account to associate with {googledrive}
-  google_email: ""
+  google_email: "therossyndicate@gmail.com"
   # The local directory where the harmonize {targets} pipeline is located (i.e.,
   # the pipeline that runs the harmonize step)
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
@@ -14,7 +14,9 @@ default:
   handoff_stable_date: "2025-02-25"
   parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in 
   # lowercase separated by "," current options: chla, sdd, doc, tss
-  pekel_gee_version: "2025-02-25"
+  run_pekel: FALSE
+  run_GEE: FALSE
+  pekel_gee_version: "2025-02-24"
   chla_stable_date: "20240701"
   sdd_stable_date: "20240701"
   doc_stable_date: "20240701"
