@@ -41,7 +41,8 @@ tar_option_set(
 # Run the R scripts with custom functions:
 tar_source(c("4_compile_sites.R",
              "5_determine_RS_visibility.R",
-             "6_siteSR_stack.R"))
+             "6_siteSR_stack.R",
+             "7_qa_and_apply_handoffs.R"))
 
 # and load the global functions
 tar_source("src/")
@@ -376,4 +377,5 @@ config_targets <- list(
 c(config_targets,
   p4_compile_sites,
   p5_determine_RS_visibility,
-  p6_siteSR_stack)
+  p6_siteSR_stack,
+  p7_qa_and_apply_handoffs)

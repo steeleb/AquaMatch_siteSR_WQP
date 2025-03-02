@@ -1,6 +1,5 @@
 # Targets list to gather Landsat stack at WQP site locations
 
-
 # Source targets functions ------------------------------------------------
 
 tar_source(files = "6_siteSR_stack/src/")
@@ -322,6 +321,9 @@ if (config::get(config = general_config)$run_GEE) {
                       local_folder = paste0("6_siteSR_stack/mid/",
                                             p0_siteSR_config$pekel_gee_version), 
                       google_email = p0_siteSR_config$google_email)
+        list.files(path = paste0("6_siteSR_stack/mid/",
+                                 p0_siteSR_config$pekel_gee_version), 
+                   full.names = TRUE)
       },
       packages = c("tidyverse", "googledrive")
     )
