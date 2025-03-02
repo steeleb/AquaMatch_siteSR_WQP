@@ -311,7 +311,7 @@ config_targets <- list(
                         id_df = p3_chla_drive_ids,
                         local_folder = "4_compile_sites/in",
                         google_email = p0_siteSR_config$google_email,
-                        version_date = p0_siteSR_config$chla_version_date) 
+                        date_stamp = p0_siteSR_config$chla_version_date) 
       } else {
         NULL
       }
@@ -328,7 +328,7 @@ config_targets <- list(
                         id_df = p3_sdd_drive_ids,
                         local_folder = "4_compile_sites/in",
                         google_email = p0_siteSR_config$google_email,
-                        version_date = p0_siteSR_config$sdd_version_date)
+                        date_stamp = p0_siteSR_config$sdd_version_date)
       } else {
         NULL
       }
@@ -345,7 +345,7 @@ config_targets <- list(
                         id_df = p3_doc_drive_ids,
                         local_folder = "4_compile_sites/in",
                         google_email = p0_siteSR_config$google_email,
-                        version_date = p0_siteSR_config$doc_version_date)
+                        date_stamp = p0_siteSR_config$doc_version_date)
       } else {
         NULL
       }
@@ -362,7 +362,7 @@ config_targets <- list(
                         id_df = p3_tss_drive_ids,
                         local_folder = "4_compile_sites/in",
                         google_email = p0_siteSR_config$google_email,
-                        version_date = p0_siteSR_config$tss_version_date)
+                        date_stamp = p0_siteSR_config$tss_version_date)
       } else {
         NULL
       }

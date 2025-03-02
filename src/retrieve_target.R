@@ -18,7 +18,7 @@
 #' @param file_type A string giving the file extension to be used. (".rds" or 
 #' ".feather")
 #' 
-#' @param version_date A string containing an eight-digit date (i.e., in
+#' @param date_stamp A string containing an eight-digit date (i.e., in
 #' ISO 8601 "basic" format: YYYYMMDD) that should be used to identify the
 #' correct file version on Google Drive.
 #' 
@@ -27,7 +27,7 @@
 #' 
 retrieve_target <- function(target, id_df, local_folder, 
                           google_email, file_type = ".rds", 
-                          version_date = NULL){
+                          date_stamp = NULL){
   
   # Authorize using the google email provided
   drive_auth(google_email)
@@ -35,9 +35,9 @@ retrieve_target <- function(target, id_df, local_folder,
   # Local file download location
   local_path <- file.path(local_folder, paste0(target, file_type))
   
-  if(!is.null(version_date)){
+  if(!is.null(date_stamp)){
     
-    file_name <- paste0(target, "_v", version_date, file_type)
+    file_name <- paste0(target, "_v", date_stamp, file_type)
     
   } else {
     

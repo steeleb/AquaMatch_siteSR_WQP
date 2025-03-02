@@ -68,6 +68,32 @@ if (general_config != "default") {
       packages = c("tidyverse", "sf"),
     ),
     
+    
+    # save this target as an .RDS in Drive
+    tar_target(
+      name = p4_save_harmonized_sites,
+      command = {
+        export_single_target(target = p4_harmonized_sites,
+                             drive_path = p0_check_targets_drive,
+                             stable = FALSE,
+                             google_email = p0_siteSR_config$google_email,
+                             date_stamp = p0_siteSR_config$collated_site_version)
+      },
+      packages = c("tidyverse", "googledrive"),
+    ), 
+    
+    tar_target(
+      name = p4_hamonized_sites_Drive_id,
+      command = {
+        get_file_ids(google_email = p0_siteSR_config$google_email,
+                     drive_folder = p0_check_targets_drive, 
+                     file_path = "4_compile_sites/out/harmonized_sites_drive_id.csv", 
+                     depend = p4_save_harmonized_sites, 
+                     filter_by = "p4_harmonized_sites")
+      },
+      packages = c("tidyverse", "googledrive")
+    ),
+    
     # Associate location with NHD waterbody and flowline ------------------------
     
     # Nearly all sites have a HUC8 reported in the `HUCEightDigitCode` field, but
@@ -160,13 +186,13 @@ if (general_config != "default") {
       },
     ),
     
-    # save this target as an .RDS in Drive, no need for this to be versioned at this time
+    # save this target as an .RDS in Drive
     tar_target(
       name = p4_export_sites,
       command = {
         p0_check_targets_drive
         export_single_target(target = p4_WQP_site_NHD_info,
-                             drive_path = "~/aquamatch_siteSR_wqp/targets/",
+                             drive_path = p0_check_targets_drive,
                              stable = FALSE,
                              google_email = p0_siteSR_config$google_email,
                              date_stamp = p0_siteSR_config$collated_site_version)
@@ -179,9 +205,7 @@ if (general_config != "default") {
       command = {
         get_file_ids(google_email = p0_siteSR_config$google_email,
                      drive_folder = p0_check_targets_drive, 
-                     file_path = paste0("4_compile_sites/out/collated_sites_drive_id_v",
-                                        p0_siteSR_config$collated_site_version,
-                                        ".csv"), 
+                     file_path = "4_compile_sites/out/collated_sites_drive_id.csv", 
                      depend = p4_export_sites, 
                      filter_by = "p4_WQP_site_NHD_info")
       },
@@ -194,12 +218,29 @@ if (general_config != "default") {
   
   p4_compile_sites <- list(
     
-    # track drive info file
+    # load in distinct sites did file and retrieve target
     tar_file_read(
-      name = p4_save_collated_sites_drive_info,
-      command = paste0("4_compile_sites/out/collated_sites_drive_id_v",
-                       p0_siteSR_config$collated_site_version,
-                       ".csv"),
+      name = p4_hamonized_sites_Drive_id,
+      command = "4_compile_sites/out/harmonized_sites_drive_id.csv",
+      read = read_csv(!!.x),
+      cue = tar_cue("always")
+    ),
+    
+    tar_target(
+      name = p4_harmonized_sites,
+      command = retrieve_target(target = "p4_harmonized_sites",
+                                id_df = p4_hamonized_sites_Drive_id, 
+                                local_folder = "4_compile_sites/out/", 
+                                google_email = p0_siteSR_config$google_email,
+                                date_stamp = p0_siteSR_config$collated_site_version,
+                                file_type = ".rds"),
+      packages = c("tidyverse", "googledrive")
+    ),
+    
+    # load in the collated sites did file and retrieve target
+    tar_file_read(
+      name = p4_collated_sites_Drive_id,
+      command = "4_compile_sites/out/collated_sites_drive_id.csv",
       read = read_csv(!!.x),
       cue = tar_cue("always")
     ),
@@ -207,11 +248,10 @@ if (general_config != "default") {
     tar_target(
       name = p4_WQP_site_NHD_info,
       command = retrieve_target(target = "p4_WQP_site_NHD_info",
-                                id_df = p4_save_collated_sites_drive_info, 
+                                id_df = p4_collated_sites_Drive_id, 
                                 local_folder = "4_compile_sites/out/", 
                                 google_email = p0_siteSR_config$google_email,
-                                file_type = ".csv",
-                                version_date = p0_siteSR_config$collated_site_version),
+                                file_type = ".rds"),
       packages = c("tidyverse", "googledrive")
     )
     

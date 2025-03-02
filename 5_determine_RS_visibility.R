@@ -50,6 +50,31 @@ if (config::get(config = general_config)$run_pekel) {
                             out_folder = "5_determine_RS_visibility/run/")
     ),
     
+    # export this target 
+    tar_target(
+      name = p5_export_yml,
+      command = {
+        export_single_target(target = p5_yml,
+                             drive_path = p0_check_targets_drive,
+                             google_email = p5_yml$google_email,
+                             date_stamp = p5_yml$run_date)
+      },
+      packages = c("tidyverse", "googledrive"),
+      deployment = "main"
+    ),
+    
+    tar_target(
+      name = p5_yml_Drive_id,
+      command = {
+        get_file_ids(google_email = p5_yml$google_email,
+                     drive_folder = p0_check_targets_drive, 
+                     file_path = "5_determine_RS_visibility/out/gee_yml_id.csv", 
+                     depend = p5_export_yml, 
+                     filter_by = "p5_yml")
+      },
+      packages = c("tidyverse", "googledrive")
+    ),
+    
     # Check for GEE export subfolder for pekel, create if not present
     tar_target(
       name = p5_check_pekel_folder,
@@ -209,20 +234,16 @@ if (config::get(config = general_config)$run_pekel) {
         visible_sites <- p5_pekel_collated %>% 
           filter(occurrence_max >= 80) %>% 
           distinct()
-        # save the file and return the dataframe
-        write_csv(visible_sites, "6_siteSR_stack/run/visible_locs_with_WRS.csv")
         visible_sites
       }
     ),
     
-    # export this target for use in documentation, no need for this to be versioned at this time
+    # export this target 
     tar_target(
       name = p5_export_visible_sites,
       command = {
-        p0_check_targets_drive
         export_single_target(target = p5_visible_sites,
-                             drive_path = "~/aquamatch_siteSR_wqp/targets/",
-                             stable = FALSE,
+                             drive_path = p0_check_targets_drive,
                              google_email = p5_yml$google_email,
                              date_stamp = p5_yml$run_date)
       },
@@ -234,12 +255,10 @@ if (config::get(config = general_config)$run_pekel) {
       name = p5_visible_site_Drive_id,
       command = {
         get_file_ids(google_email = p5_yml$google_email,
-                     drive_folder = "~/aquamatch_siteSR_wqp/targets/", 
-                     file_path = paste0("5_determine_RS_visibility/out/pekel_drive_id_v",
-                                        p5_yml$run_date,
-                                        ".csv"), 
+                     drive_folder = p0_check_targets_drive, 
+                     file_path = paste0("5_determine_RS_visibility/out/visible_site_id.csv"), 
                      depend = p5_export_visible_sites, 
-                     filter_by = "p5_export_visible_sites")
+                     filter_by = "p5_visible_sites")
       },
       packages = c("tidyverse", "googledrive")
     )
@@ -248,20 +267,45 @@ if (config::get(config = general_config)$run_pekel) {
   
 } else {
   
-  list(
+  p5_determine_RS_visibility <- list(
+    
+    # load yml for visibility pull
     tar_file_read(
-      name = p5_save_pekel_drive_info,
-      command = paste0("5_determine_RS_visibility/out/pekel_drive_id_v",
-                       siteSr$pekel_version,
-                       ".csv"),
+      name = p5_yml_Drive_id,
+      command = "5_determine_RS_visibility/out/gee_yml_id.csv", 
+      read = read_csv(!!.x)
+    ),
+    
+    tar_target(
+      name = p5_yml, 
+      command = retrieve_target(target = "p5_yml",
+                                id_df = p5_yml_Drive_id, 
+                                local_folder = "5_determine_RS_visibility/out/", 
+                                google_email = p0_siteSR_config$google_email,
+                                date_stamp = p0_siteSR_config$pekel_gee_version,
+                                file_type = ".rds"),
+      packages = c("tidyverse", "googledrive")
+    ),
+    
+    # load visible sites
+    tar_file_read(
+      name = p5_visible_site_Drive_id,
+      command = "5_determine_RS_visibility/out/visible_site_id.csv",
       read = read_csv(!!.x),
       cue = tar_cue("always")
     ),
     
     tar_target(
       name = p5_visible_sites,
-      command = rerieve
+      command = retrieve_target(target = "p5_visible_sites",
+                                id_df = p5_visible_site_Drive_id, 
+                                local_folder = "5_determine_RS_visibility/out/", 
+                                google_email = p0_siteSR_config$google_email,
+                                date_stamp = p0_siteSR_config$pekel_gee_version,
+                                file_type = ".rds"),
+      packages = c("tidyverse", "googledrive")
     )
+    
   )
-  
+
 }

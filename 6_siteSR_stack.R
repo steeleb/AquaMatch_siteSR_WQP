@@ -30,6 +30,12 @@ p6_siteSR_stack <- list(
     cue = tar_cue("always")
   ),
   
+  # save the output of RS-visible sites to this directory
+  tar_target(
+    name = p6_store_visible_sites_for_GEE,
+    command = write_csv(p5_visible_sites, "6_siteSR_stack/run/visible_locs_with_WRS.csv")
+  ),
+  
   # Check for GEE export subfolder, create if not present
   tar_target(
     name = p6_check_siteSR_folder,
