@@ -2,20 +2,20 @@
 
 # Source targets functions ------------------------------------------------
 
-tar_source(files = "7_qa_and_apply_handoffs/src/")
+tar_source(files = "7_qa_stack/src/")
 
 
 # Define {targets} workflow -----------------------------------------------
 
 # target objects in workflow
-p7_qa_and_apply_handoffs <- list(
+p7_qa_stack <- list(
   
   tar_target(
     name = p7_check_dir_structure,
     command = {
       # make directories if needed
-      directories = c("7_qa_and_apply_handoffs/qa/",
-                      "7_qa_and_apply_handoffs/out/")
+      directories = c("7_qa_stack/qa/",
+                      "7_qa_stack/out/")
       walk(directories, function(dir) {
         if(!dir.exists(dir)){
           dir.create(dir)
@@ -58,16 +58,6 @@ p7_qa_and_apply_handoffs <- list(
     packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis"),
     pattern = cross(p7_mission_identifiers, p7_dswe_types),
   )
-  # , 
-  # 
-  # tar_target(
-  #   name = p7_corrected_Landsat_files,
-  #   command = correct_timeseries(
-  #     qa_files = p7_qa_Landsat_files,
-  #     method = p0_siteSR_config$correction_method,
-  #     correct_to = p0_siteSR_config$correct_to
-  #   )
-  # )
-  
+
 )
 
