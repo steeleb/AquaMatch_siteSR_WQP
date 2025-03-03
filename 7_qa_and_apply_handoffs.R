@@ -58,7 +58,16 @@ p7_qa_and_apply_handoffs <- list(
     packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis"),
     pattern = cross(p7_mission_identifiers, p7_dswe_types),
   )
-  
+  # , 
+  # 
+  # tar_target(
+  #   name = p7_corrected_Landsat_files,
+  #   command = correct_timeseries(
+  #     qa_files = p7_qa_Landsat_files,
+  #     method = p0_siteSR_config$correction_method,
+  #     correct_to = p0_siteSR_config$correct_to
+  #   )
+  # )
   
 )
 

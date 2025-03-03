@@ -4,36 +4,43 @@
 default:
   # gmail account to associate with {googledrive}
   google_email: "therossyndicate@gmail.com"
+  drive_project_folder: "~/aquamatch_siteSR_wqp/" # must start with "~/" and end with "/"
   # The local directory where the harmonize {targets} pipeline is located (i.e.,
   # the pipeline that runs the harmonize step)
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  collated_site_version: "2025-02-19"
+  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in 
+  # lowercase separated by "," current options: chla, sdd, doc, tss
+  chla_stable_date: "20240701"
+  sdd_stable_date: "20240701"
+  doc_stable_date: "20240701"
+  tss_stable_date: "20250131"
+  collated_site_version: "2025-02-19" # date of stored site collation for pipeline
+  run_pekel: FALSE 
+  run_GEE: FALSE
+  pekel_gee_version: "2025-02-24"
   # The local directory where the lakeSR {targets} pipeline is located (i.e.,
   # the pipeline that runs the lakeSR workflow)
   lakesr_repo_directory: "../AquaMatch_lakeSR/"
   handoff_stable_date: "2025-02-25"
-  parameters: "chla,sdd,doc,tss" # any combination of harmonized parameters in 
-  # lowercase separated by "," current options: chla, sdd, doc, tss
-  run_pekel: FALSE
-  run_GEE: FALSE
-  pekel_gee_version: "2025-02-24"
-  chla_stable_date: "20240701"
-  sdd_stable_date: "20240701"
-  doc_stable_date: "20240701"
-  tss_stable_date: "20250131"
-  drive_project_folder: "~/aquamatch_siteSR_wqp/"
+  correction_method: "gardner" # gardner or roy
+  correction_to: "LS7" # LS7 or LS8
+  match_window: 3 # number of days allowed between in-situ remote sensing for matching
 # Update the stable dataset version for one or more parameters
 admin_update:
   google_email: "therossyndicate@gmail.com"
+  drive_project_folder: "~/aquamatch_siteSR_wqp/"
   harmonize_repo_directory: "../AquaMatch_harmonize_WQP/"
-  collated_site_version: "2025-02-19"
-  lakesr_repo_directory: "../AquaMatch_lakeSR/"
-  handoff_date: "2025-02-25"
   parameters: "chla,sdd,doc,tss" 
-  run_pekel: TRUE
-  run_GEE: TRUE
   chla_stable_date: "20240701"
   sdd_stable_date: "20240701"
   doc_stable_date: "20240701"
   tss_stable_date: "20250131"
-  drive_project_folder: "~/aquamatch_siteSR_wqp/"
+  collated_site_version: "2025-02-19"
+  lakesr_repo_directory: "../AquaMatch_lakeSR/"
+  handoff_date: "2025-02-25"
+  run_pekel: TRUE
+  run_GEE: TRUE
+  correction_method: "gardner" # gardner or roy
+  correction_to: "LS7" # LS7 or LS8
+  match_window: 3 # number of days allowed between in-situ remote sensing for matching
+
