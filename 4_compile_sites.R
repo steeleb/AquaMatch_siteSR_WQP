@@ -132,11 +132,15 @@ if (general_config != "default") {
       command = {
         p4_check_dir_structure
         add_NHD_waterbody_to_sites(sites_with_huc = p4_add_HUC8,
-                                   huc4 = p4_HUC4_list)
+                                   huc4 = p4_HUC4_list,
+                                   GEE_buffer = as.numeric(p5_yml$site_buffer))
       },
       pattern = map(p4_HUC4_list),
+      iteration = "list",
       packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
     ),
+    
+    # Add flags for proximity to shore 
     
     # Calculate the closest flowline to each river/stream/res/lake/pond site by HUC4
     tar_target(
@@ -144,9 +148,11 @@ if (general_config != "default") {
       command = {
         p4_check_dir_structure
         add_NHD_flowline_to_sites(sites_with_huc = p4_add_HUC8,
-                                  huc4 = p4_HUC4_list)
+                                  huc4 = p4_HUC4_list,
+                                  GEE_buffer = as.numeric(p5_yml$site_buffer))
       }, 
       pattern = map(p4_HUC4_list),
+      iteration = "list",
       packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
     ),
     
@@ -164,18 +170,47 @@ if (general_config != "default") {
       name = p4_WQP_site_NHD_info,
       command = {
         p4_check_dir_structure
-        # join the data together
-        collated_sites <- full_join(p4_add_NHD_waterbody_info, 
-                                    p4_add_NHD_flowline_info) %>% 
+        # join the waterbody metadata data together
+        waterbody_info <- map(p4_add_NHD_waterbody_info,
+                              function(l) {
+                                # get the first object of the list item (nhd info with waterbody info)
+                                l[1]
+                              }) %>% 
+          bind_rows()
+        # and the flowine data
+        flowline_info <- map(p4_add_NHD_flowline_info,
+                             function(l) {
+                               # get the first object of the list item (nhd info with waterbody info)
+                               l[1]
+                             }) %>% 
+          bind_rows
+        collated_sites <- full_join(waterbody_info, 
+                                    flowline_info) %>% 
           # add in spatial info from above
           full_join(p4_add_HUC8, .) %>% 
           st_drop_geometry()
+        # get the intersections data to add to this
+        waterbody_intersections <- map(p4_add_NHD_waterbody_info,
+                                       function(l) {
+                                         # get the second object of the list item (intersection info)
+                                         l[2]
+                                       }) %>% 
+          bind_rows()
+        flowline_intersections <- map(p4_add_NHD_flowline_info,
+                                      function(l) {
+                                        # get the first object of the list item (intersection info)
+                                        l[2]
+                                      }) %>% 
+          bind_rows
+        
         # turns out there are a few overlapping NHD waterbody polygons that create 
         # a handful of extra rows here. For the purposes of this workflow, we'll 
         # just grab the larger of the two overlapping polygons. 
         collated_sites <- collated_sites %>% 
           arrange(-wb_areasqkm) %>% 
-          slice(1, .by = MonitoringLocationIdentifier)
+          slice(1, .by = siteSR_id) %>% 
+          left_join(., waterbody_intersections) %>% 
+          left_join(., flowline_intersections)
         # fill in flags where HUC8 was not able to be assigned
         collated_sites <- collated_sites %>% 
           mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),

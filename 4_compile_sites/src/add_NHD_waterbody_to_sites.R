@@ -7,21 +7,21 @@
 #' 
 #' @param sites_with_huc simple feature object of sites to pair with waterbodies
 #' @param huc4 4-digit character string to filter sites by
+#' @param GEE_buffer numeric value of buffer for GEE site extraction in meters
 #' 
 #' @returns a simple feature object of sites with additional fields from 
 #' NHDPlusV2 or NHD Best Resolution file, as well as flags for waterbody 
 #' assignment
 #' 
 #' 
-add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
+add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
   
   message(paste0("Assigning NHD waterbodies to sites within ", huc4))
   
   tryCatch({
     # filter sites for those in a single huc
     sf_subset <- sites_with_huc %>%
-      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) %>% 
-      rowid_to_column()
+      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) 
     
     # if huc4 < 1900 (conus points), we can use nhdplustools, otherwise we have to 
     # download from the national map.
@@ -120,6 +120,20 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         st_transform(crs = st_crs(huc4_wbd))
     }
     
+    # walk through all of the sites and calculate how many waterbodies they
+    # intersect with given the buffer for GEE extraction. this assumes that the
+    # buffer does not extend beyond the HUC boundary
+    intersecting_waterbodies <-  tibble(siteSR_id = sf_subset$siteSR_id,
+                                        number_int_wb = map_vec(.x = sf_subset$siteSR_id,
+                                                                .f = \(.x) {
+                                                                  buffered_point <- sf_subset %>% 
+                                                                    filter(siteSR_id == .x) %>% 
+                                                                    st_buffer(GEE_buffer)
+                                                                  intersected_features <- st_intersects(buffered_point, huc4_wbd)
+                                                                  lengths(intersected_features)
+                                                                }))
+    
+    
     # split the sites by Monitoring Location Type - for this, we'll just
     # pair lake/reservoir. river sites are paired in add_NHD_flowline_to_sites()
     huc4_lake_points <- sf_subset %>%
@@ -141,13 +155,13 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
       to_match <- huc4_lake_points %>%
         st_drop_geometry(.) %>%
         rowid_to_column("loc_id") %>%
-        select(loc_id, rowid)
+        select(loc_id, siteSR_id)
       
-      matched <- map2(.x = to_match$rowid,
+      matched <- map2(.x = to_match$siteSR_id,
                       .y = to_match$loc_id,
                       .z = huc4_wbd_intersect,
                       .f = \(.x, .y, .z) {
-                        tibble(rowid = .x,
+                        tibble(siteSR_id = .x,
                                wbd_id = .z[[.y]])
                       }) %>%
         bind_rows() %>%
@@ -158,17 +172,49 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         # add distance to waterbody for rbind later
         mutate(dist_to_wb = NA)
       
+      # get coordinates to calculate UTM zone. This is an adaptation of code from
+      # Xiao Yang's code in EE - Yang, Xiao. (2020). Deepest point calculation 
+      # for any given polygon using Google Earth Engine JavaScript API 
+      # (Version v1). Zenodo. https://doi.org/10.5281/zenodo.4136755
+      # we're going to make the assumption that all points in the HUC4 are in the
+      # same UTM zone
+      coord_for_UTM <- matched %>% st_coordinates()
+      mean_x <- mean(coord_for_UTM[, 1])
+      mean_y <- mean(coord_for_UTM[, 2])
+      # calculate the UTM zone using the mean value of Longitude for the sites
+      utm_suffix <- as.character(ceiling((mean_x + 180) / 6))
+      utm_code <- if_else(mean_y >= 0,
+                          # EPSG prefix for N hemisphere
+                          paste0('EPSG:326', utm_suffix),
+                          # for S hemisphere
+                          paste0('EPSG:327', utm_suffix))
+      # transform points and waterbodies to UTM
+      transformed_waterbodies <- st_transform(huc4_wbd, 
+                                              crs = utm_code)
+      transformed_points <- st_transform(matched,
+                                         crs = utm_code)
+      
+      
+      # cast the waterbodies into a linestrings to measure distance
+      waterbody_boundary <- st_cast(st_geometry(transformed_waterbodies), "MULTILINESTRING") %>% 
+        # dissolve these into a single geometry, since the identity of the line doesn't
+        # matter
+        st_union()
+      
+      # measure the distance, rounded to integer
+      matched$dist_to_shore <- round(st_distance(transformed_points, waterbody_boundary), 0)
+      
       # get any unmatched Lake points. Here, we will just grab the closest
       # waterbody and the distance to that waterbody. For each of them,
       # arrange by wbd_id for proper st_distance measure.
       unmatched <- huc4_lake_points %>%
-        filter(!rowid %in% matched$rowid) %>%
+        filter(!siteSR_id %in% matched$siteSR_id) %>%
         mutate(wbd_id = st_nearest_feature(., huc4_wbd)) %>%
         left_join(., huc4_wbd %>% st_drop_geometry()) %>%
         arrange(wbd_id)
       
       huc4_unmatched <- unmatched %>%
-        select(rowid, wbd_id) %>%
+        select(siteSR_id, wbd_id) %>%
         st_drop_geometry() %>%
         right_join(huc4_wbd, .) %>%
         arrange(wbd_id)
@@ -181,7 +227,9 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
                       ~ if_else(dist_to_wb > 500,
                                 NA,
                                 .))) %>%
-        select(-wbd_id)
+        select(-wbd_id) %>% 
+        # add for rbind ease
+        mutate(dist_to_shore = NA)
       
       #join the matched and unmatched together, flag wbd assignment
       assignment <- rbind(matched, unmatched) %>%
@@ -192,14 +240,19 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4) {
         # distance info)
         # 3 = point does not have HUC8 assignment, so no waterbody assigned (not assigned here)
         mutate(flag_wb = case_when(!is.na(wb_nhd_id) & is.na(dist_to_wb) ~ 0,
-                                   !is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 1,
-                                   is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 2))
+                                   !is.na(wb_nhd_id) & dist_to_wb <= GEE_buffer ~ 1,
+                                   !is.na(wb_nhd_id) & dist_to_wb > GEE_buffer ~ 2,
+                                   is.na(wb_nhd_id) & !is.na(dist_to_wb) ~ 3)) %>% 
+        left_join(., intersecting_waterbodies)
       
       # return unique site info, huc code, and all the waterbody info
-      assignment %>% 
-        st_drop_geometry() %>% 
-        select(MonitoringLocationIdentifier, HUCEightDigitCode,
-               all_of(starts_with("wb_")), dist_to_wb, flag_wb)
+      list(
+        assignment %>% 
+          st_drop_geometry() %>% 
+          select(siteSR_id, MonitoringLocationIdentifier, HUCEightDigitCode,
+                 all_of(starts_with("wb_")), dist_to_shore, dist_to_wb, flag_wb),
+        intersecting_waterbodies
+      )
       
     } else {
       

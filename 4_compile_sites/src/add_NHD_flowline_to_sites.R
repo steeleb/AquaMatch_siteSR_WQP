@@ -21,8 +21,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     
     # filter sites for those in a single huc4
     sf_subset <- sites_with_huc %>%
-      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) %>% 
-      rowid_to_column()
+      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) 
     
     # if huc4 < 1900 (conus points), we can use nhdplustools, otherwise we have to 
     # download from the national map.
@@ -124,6 +123,22 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         st_transform(crs = st_crs(huc4_fl))
     }
     
+    # walk through all of the sites and calculate how many flowlines they
+    # intersect with given the buffer for GEE extraction. this assumes that the
+    # buffer does not extend beyond the HUC boundary
+    intersecting_flowlines <-  tibble(siteSR_id = sf_subset$siteSR_id,
+                                      number_int_fl = map_vec(.x = sf_subset$siteSR_id,
+                                                              .f = \(.x) {
+                                                                buffered_point <- sf_subset %>% 
+                                                                  filter(siteSR_id == .x) %>% 
+                                                                  st_buffer(GEE_buffer)
+                                                                intersected_features <- st_intersects(buffered_point, huc4_fl)
+                                                                lengths(intersected_features)
+                                                              }))
+    
+    
+    
+    
     # we'll associate flowlines across all sites.  are paired to
     # waterbodies in add_NHD_waterbody_to_sites()
     huc4_flowline_points <- sf_subset %>%
@@ -144,7 +159,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         arrange(fl_id)
       
       huc4_matched <- matched %>%
-        select(rowid, fl_id) %>%
+        select(siteSR_id, fl_id) %>%
         st_drop_geometry() %>%
         right_join(huc4_fl, .) %>%
         arrange(fl_id)
@@ -170,15 +185,19 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         #     distance info, dist > 500m)
         # 4 = point does not have HUC8 assignment, so no flowline assigned (not assigned here)
         mutate(flag_fl = case_when(!is.na(fl_nhd_id) & dist_to_fl <= 100 ~ 0,
-                                   !is.na(fl_nhd_id) & dist_to_fl <= 500 ~ 1,
-                                   !is.na(fl_nhd_id) & dist_to_fl > 500 ~ 2,
-                                   is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 3))
+                                   !is.na(fl_nhd_id) & between(dist_to_fl, 100, GEE_buffer) ~ 1,
+                                   !is.na(fl_nhd_id) & between(dist_to_fl, GEE_buffer, 500) ~ 2,
+                                   !is.na(fl_nhd_id) & dist_to_fl > 500 ~ 3,
+                                   is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 4))
       
-      # return unique site info, huc code, and all the flowline info
-      assignment %>% 
-        st_drop_geometry() %>% 
-        select(MonitoringLocationIdentifier, HUCEightDigitCode,
-               all_of(starts_with("fl_")), dist_to_fl, flag_fl)
+      # return unique site info, huc code, and all the flowline info; also intersecting
+      # flowlines for all sites in huc
+      list(assignment %>% 
+             st_drop_geometry() %>% 
+             select(siteSR_id, MonitoringLocationIdentifier, HUCEightDigitCode,
+                    all_of(starts_with("fl_")), dist_to_fl, flag_fl),
+           intersecting_flowlines
+      )
       
     } else {
       
