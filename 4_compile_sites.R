@@ -207,17 +207,47 @@ if (general_config != "default") {
         # a handful of extra rows here. For the purposes of this workflow, we'll 
         # just grab the larger of the two overlapping polygons. 
         collated_sites <- collated_sites %>% 
-          arrange(-wb_areasqkm) %>% 
-          slice(1, .by = siteSR_id) %>% 
           left_join(., waterbody_intersections) %>% 
-          left_join(., flowline_intersections)
+          left_join(., flowline_intersections) %>% 
+          arrange(-wb_areasqkm) %>% 
+          slice(1, .by = siteSR_id) 
         # fill in flags where HUC8 was not able to be assigned
         collated_sites <- collated_sites %>% 
           mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),
-                 flag_wb = if_else(is.na(flag_fl), 4, flag_fl))
-        write_csv(collated_sites, 
+                 flag_wb = if_else(is.na(flag_fl), 4, flag_fl),
+                 # flag 0 = unlikely shoreline contamination
+                 # flag 1 = possible shoreline contamination
+                 flag_optical_shoreline =  case_when(flag_wb != 0 ~ NA,
+                                                     dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 30) &
+                                                       flag_wb == 0 ~ 1,
+                                                     dist_to_shore > (as.numeric(p5_yml$site_buffer) + 30) &
+                                                       flag_wb == 0 ~ 0), 
+                 flag_thermal_TM_shoreline =  case_when(flag_wb != 0 ~ NA,
+                                                        dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 120) &
+                                                          flag_wb == 0 ~ 1,
+                                                        dist_to_shore > (as.numeric(p5_yml$site_buffer) + 120) &
+                                                          flag_wb == 0 ~ 0), 
+                 flag_thermal_ETM_shoreline = case_when(flag_wb != 0 ~ NA,
+                                                        dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 60) &
+                                                          flag_wb == 0 ~ 1,
+                                                        dist_to_shore > (as.numeric(p5_yml$site_buffer) + 60) &
+                                                          flag_wb == 0 ~ 0), 
+                 flag_thermal_TIRS_shoreline = case_when(flag_wb != 0 ~ NA,
+                                                         dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 100) &
+                                                           flag_wb == 0 ~ 1,
+                                                         dist_to_shore > (as.numeric(p5_yml$site_buffer) + 100) &
+                                                           flag_wb == 0 ~ 0)) 
+        # we'll also drop some columns that are available using 
+        # dataRetrieval::whatWQPsites(siteid = `MonitoringLocationIdentifier`)
+        collated_sites_smaller <- collated_sites %>% 
+          select(-c(OrganizationFormalName, MonitoringLocationDescriptionText,
+                    DrainageAreaMeasure.MeasureValue:HorizontalAccuracyMeasure.MeasureUnitCode,
+                    HorizontalCoordinateReferenceSystemDatumName:CountyCode,
+                    AquiferName:WellHoleDepthMeasure.MeasureUnitCode,
+                    epsg))
+        write_csv(collated_sites_smaller, 
                   "4_compile_sites/out/collated_WQP_sites_with_metadata.csv")
-        collated_sites
+        collated_sites_smaller
       },
     ),
     
@@ -286,6 +316,7 @@ if (general_config != "default") {
                                 id_df = p4_collated_sites_Drive_id, 
                                 local_folder = "4_compile_sites/out/", 
                                 google_email = p0_siteSR_config$google_email,
+                                date_stamp = p0_siteSR_config$collated_site_version,
                                 file_type = ".rds"),
       packages = c("tidyverse", "googledrive")
     )

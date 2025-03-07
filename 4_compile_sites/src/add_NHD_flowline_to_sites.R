@@ -8,12 +8,15 @@
 #' @param sites_with_huc a spatial feature object of sites that have a huc assigned
 #' for spatial subsetting
 #' @param huc4 4-digit character string to filter sites by
-#' @returns a dataframe of the spatial feature information with flowline and 
-#' distance to flowline assignment. 
+#' @param GEE_buffer numeric value of buffer for GEE site extraction in meters
+#' 
+#' @returns a list containing dataframe of the spatial feature information with flowline and 
+#' distance to flowline assignment as well as a dataframe of the number of intersections
 #' 
 #' 
 add_NHD_flowline_to_sites <- function(sites_with_huc, 
-                                      huc4) {
+                                      huc4,
+                                      GEE_buffer) {
   
   message(paste0("Assigning NHD HR flowlines to sites within ", huc4))
   
@@ -165,8 +168,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         arrange(fl_id)
       
       matched <- matched %>%
-        mutate(dist_to_fl = st_distance(matched, huc4_matched, by_element = TRUE)) %>%
-        mutate(dist_to_fl = as.numeric(dist_to_fl)) %>%
+        mutate(dist_to_fl = as.numeric(round(st_distance(matched, huc4_matched, by_element = TRUE)))) %>%
         # if the distance to the flowline is > 500m, recode all the flowline info 
         # ** if ** the location type is river/stream, otherwise the distance can 
         # stay for lake/res, since the distance could be large for large waterbodies
@@ -179,16 +181,18 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       #join the matched and matched together, flag fl assignment
       assignment <- matched %>%
         # 0 = point <= 100m proximate to flowline (nhd_id info, distance < 100)
-        # 1 = point <= 500m proximate to flowline (nhd_id info and distance info)
-        # 2 = point > 500m proximate to flowline, but a lake/res site ()
+        # 1 = point between 100m and GEE buffer distance proximate to flowline (nhd_id info and distance info)
+        # 2 = point between GEE buffer distance and 500m proximate to flowline (nhd_id info and distance info)
         # 3 = point unable to be assigned to flowline for a stream site (no nhd_id, but
         #     distance info, dist > 500m)
-        # 4 = point does not have HUC8 assignment, so no flowline assigned (not assigned here)
+        # 4 = point > 500m proximate to flowline, but a lake/res site ()
+        # 5 = point does not have HUC8 assignment, so no flowline assigned (not assigned here)
         mutate(flag_fl = case_when(!is.na(fl_nhd_id) & dist_to_fl <= 100 ~ 0,
                                    !is.na(fl_nhd_id) & between(dist_to_fl, 100, GEE_buffer) ~ 1,
                                    !is.na(fl_nhd_id) & between(dist_to_fl, GEE_buffer, 500) ~ 2,
-                                   !is.na(fl_nhd_id) & dist_to_fl > 500 ~ 3,
-                                   is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 4))
+                                   is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 3,
+                                   !is.na(fl_nhd_id) & dist_to_fl > 500 & 
+                                     grepl("lake|pond|reservoir", MonitoringLocationTypeName, ignore.case = T) ~ 4))
       
       # return unique site info, huc code, and all the flowline info; also intersecting
       # flowlines for all sites in huc
