@@ -68,7 +68,6 @@ if (general_config != "default") {
       packages = c("tidyverse", "sf"),
     ),
     
-    
     # save this target as an .RDS in Drive
     tar_target(
       name = p4_save_harmonized_sites,

@@ -60,31 +60,6 @@ config_targets <- list(
     cue = tar_cue("always")
   ),
   
-  # Set Google Drive directory paths for parameter objects
-  tar_target(
-    name = p0_chla_output_path,
-    command = paste0(p0_siteSR_config$drive_project_folder,
-                     "chlorophyll/")
-  ),
-  
-  tar_target(
-    name = p0_sdd_output_path,
-    command = paste0(p0_siteSR_config$drive_project_folder,
-                     "sdd/")
-  ), 
-  
-  tar_target(
-    name = p0_doc_output_path,
-    command = paste0(p0_siteSR_config$drive_project_folder,
-                     "doc/")
-  ), 
-  
-  tar_target(
-    name = p0_tss_output_path,
-    command = paste0(p0_siteSR_config$drive_project_folder,
-                     "tss/")
-  ), 
-  
   # Check for Google Drive folder for siteSR output path, create it if it
   # doesn't exist
   tar_target(
@@ -95,90 +70,6 @@ config_targets <- list(
     }, error = function(e) {
       drive_mkdir(str_sub(p0_siteSR_config$drive_project_folder, 1, -2))  
     }),
-    packages = "googledrive",
-    cue = tar_cue("always")
-  ),
-  
-  # Check for chlorophyll subfolder, create if not present
-  tar_target(
-    name = p0_check_chla_drive,
-    command = {
-      p0_check_drive_parent_folder
-      tryCatch({
-        drive_auth(p0_siteSR_config$google_email)
-        drive_ls(p0_chla_output_path)
-      }, error = function(e) {
-        # if the outpath doesn't exist, create it along with a "stable" subfolder
-        drive_mkdir(name = "chlorophyll",
-                    path = p0_siteSR_config$drive_project_folder)
-        drive_mkdir(name = "stable",
-                    path = paste0(p0_siteSR_config$drive_project_folder,
-                                  "chlorophyll"))
-      })
-    },
-    packages = "googledrive",
-    cue = tar_cue("always")
-  ),
-  
-  # Check for sdd subfolder, create if not present
-  tar_target(
-    name = p0_check_sdd_drive,
-    command = {
-      p0_check_drive_parent_folder
-      tryCatch({
-        drive_auth(p0_siteSR_config$google_email)
-        drive_ls(p0_sdd_output_path)
-      }, error = function(e) {
-        # if the outpath doesn't exist, create it along with a "stable" subfolder
-        drive_mkdir(name = "sdd",
-                    path = p0_siteSR_config$drive_project_folder)
-        drive_mkdir(name = "stable",
-                    path = paste0(p0_siteSR_config$drive_project_folder,
-                                  "sdd"))
-      })
-    },
-    packages = "googledrive",
-    cue = tar_cue("always")
-  ),
-  
-  # Check for doc subfolder, create if not present
-  tar_target(
-    name = p0_check_doc_drive,
-    command = {
-      p0_check_drive_parent_folder
-      tryCatch({
-        drive_auth(p0_siteSR_config$google_email)
-        drive_ls(p0_doc_output_path)
-      }, error = function(e) {
-        # if the outpath doesn't exist, create it along with a "stable" subfolder
-        drive_mkdir(name = "doc",
-                    path = p0_siteSR_config$drive_project_folder)
-        drive_mkdir(name = "stable",
-                    path = paste0(p0_siteSR_config$drive_project_folder,
-                                  "doc"))
-      })
-    },
-    packages = "googledrive",
-    cue = tar_cue("always")
-  ),
-  
-  # Check for tss subfolder, create if not present
-  tar_target(
-    name = p0_check_tss_drive,
-    command = {
-      p0_check_drive_parent_folder
-      tryCatch({
-        drive_auth(p0_siteSR_config$google_email)
-        drive_ls(p0_tss_output_path)
-      }, error = function(e) {
-        # if the outpath doesn't exist, create it along with a "stable" subfolder
-        drive_mkdir(name = "tss",
-                    path = p0_siteSR_config$drive_project_folder)
-        drive_mkdir(name = "stable",
-                    path = paste0(p0_siteSR_config$drive_project_folder,
-                                  "tss"))
-      })
-    },
     packages = "googledrive",
     cue = tar_cue("always")
   ),
@@ -219,22 +110,6 @@ config_targets <- list(
     },
     cue = tar_cue("always")
   ),
-  
-  # Grab location of the local {targets} lakeSR pipeline OR error if
-  # the location doesn't exist yet
-  tar_target(
-    name = p0_AquaMatch_lakeSR_directory,
-    command = if(dir.exists(p0_siteSR_config$lakesr_repo_directory)) {
-      p0_siteSR_config$lakesr_repo_directory
-    } else {
-      # Throw an error if the pipeline does not exist
-      stop("The lakeSR pipeline is not at the location specified in the 
-           config.yml file. Check the location specified as `lakesr_repo_directory`
-           in the config.yml file and rerun the pipeline.")
-    },
-    cue = tar_cue("always")
-  ),
-  
   
   # Retrieve Drive IDs from linked repositories -------------------------------
   

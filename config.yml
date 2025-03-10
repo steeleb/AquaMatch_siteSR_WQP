@@ -20,8 +20,6 @@ default:
   pekel_gee_version: "2025-02-24"
   update_and_share: TRUE # indication of whether of not the 'export' siteSR files should be 
   # uploaded to Drive, requires drive_project_folder if set to TRUE
-  lakesr_repo_directory: "../AquaMatch_lakeSR/" # The local directory where the 
-  # lakeSR {targets} pipeline is located (i.e., the pipeline that runs the lakeSR workflow)
 # Update the stable dataset version for one or more parameters
 admin_update:
   google_email: "therossyndicate@gmail.com"
