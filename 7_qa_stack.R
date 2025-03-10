@@ -87,14 +87,54 @@ p7_qa_stack <- list(
 # if configuration is to update and share on Drive, add these targets to the p7 
 # list
 if (config::get(config = general_config)$update_and_share) {
+  
   p7_qa_stack <- list(
     
     p7_qa_stack,
     
     tar_target(
-      name = p7_test,
-      command = "fish"
-      
+      name = p7_check_Drive_siteSR_folder,
+      command =  {
+        p0_check_drive_parent_folder
+        tryCatch({
+          drive_auth(p0_siteSR_config$google_email)
+          parent_folder <- p0_siteSR_config$drive_project_folder
+          version_path <- paste0(p0_siteSR_config$drive_project_folder, 
+                                    paste0("siteSR_qa_v", p5_yml$run_date, "/"))
+          drive_ls(version_path)
+        }, error = function(e) {
+          # if there is an error, check both the 'collated_raw' folder and the 'version'
+          # folder
+          drive_mkdir(path = parent_folder, name = paste0("siteSR_qa_v", p5_yml$run_date))
+        })
+        return(version_path)
+      },
+      packages = "googledrive",
+      cue = tar_cue("always")    
+    ),
+    
+    tar_target(
+      name = p7_send_siteSR_files_to_drive,
+      command = export_single_file(file_path = p7_qa_files_list,
+                                   drive_path = p7_check_Drive_siteSR_folder,
+                                   google_email = p0_siteSR_config$google_email),
+      packages = c("tidyverse", "googledrive"),
+      pattern = p7_qa_files_list
+    ),
+    
+    tar_target(
+      name = p7_save_siteSR_drive_info,
+      command = {
+        drive_ids <- p7_send_siteSR_files_to_drive %>% 
+          select(name, id)
+        write_csv(drive_ids,
+                  paste0("7_qa_stack/out/siteSR_qa_files_drive_ids_v",
+                         p0_siteSR_config$run_date,
+                         ".csv"))
+        drive_ids
+      },
+      packages = c("tidyverse", "googledrive"),
+      deployment = "main"
     )
   )
 }
