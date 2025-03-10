@@ -15,7 +15,8 @@ p7_qa_stack <- list(
     command = {
       # make directories if needed
       directories = c("7_qa_stack/qa/",
-                      "7_qa_stack/out/")
+                      "7_qa_stack/out/",
+                      "7_qa_stack/export/")
       walk(directories, function(dir) {
         if(!dir.exists(dir)){
           dir.create(dir)
@@ -50,14 +51,51 @@ p7_qa_stack <- list(
     }
   ), 
   
+  # qa the siteSR stacks like we do with lakeSR
   tar_target(
     name = p7_qa_Landsat_files,
-    command = qa_and_document_LS(mission_info = p7_mission_identifiers,
-                                 dswe = p7_dswe_types, 
-                                 collated_files = p6_collated_siteSR_files),
+    command = {
+      p7_check_dir_structure
+      qa_and_document_LS(mission_info = p7_mission_identifiers,
+                         dswe = p7_dswe_types, 
+                         collated_files = p6_collated_siteSR_files)
+    },
     packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis"),
     pattern = cross(p7_mission_identifiers, p7_dswe_types),
+  ),
+  
+  # now add siteSR id, and necessary information for data storage, save as .csv
+  tar_target(
+    name = p7_qa_files_list,
+    command = {
+      p7_qa_Landsat_files
+      list.files("7_qa_stack/qa/", full.names = TRUE)
+    }
+  ),
+  
+  tar_target(
+    name = p7_Landsat_files_for_export,
+    command = prep_Landsat_for_export(file = p7_qa_files_list,
+                                      file_type = "csv",
+                                      out_path = "7_qa_stack/export/"),
+    pattern = map(p7_qa_files_list),
+    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
   )
-
+  
 )
+
+# if configuration is to update and share on Drive, add these targets to the p7 
+# list
+if (config::get(config = general_config)$update_and_share) {
+  p7_qa_stack <- list(
+    
+    p7_qa_stack,
+    
+    tar_target(
+      name = p7_test,
+      command = "fish"
+      
+    )
+  )
+}
 

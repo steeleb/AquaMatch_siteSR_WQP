@@ -1,16 +1,8 @@
-# History files
+# Miscellaneous R artifacts unnecessary to track
 .Rhistory
-
-# Session Data files
 .RData
-
-# User-specific files
 .Ruserdata
-
-# RStudio files
 .Rproj.user/
-
-# R Environment Variables
 .Renviron
 
 # targets data
@@ -46,6 +38,7 @@ _targets/
 
 7_qa_stack/qa/*
 7_qa_stack/out/*
+7_qa_stack/export/*
 
 # Python environment
 env/*
