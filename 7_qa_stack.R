@@ -51,6 +51,13 @@ p7_qa_stack <- list(
     }
   ), 
   
+  tar_target(
+    name = p7_metadata_files,
+    command = list.files(file.path("6_siteSR_stack/mid/", p5_yml$run_date), 
+                         full.names = TRUE) %>% 
+      .[grepl("metadata", .)]
+  ),
+  
   # qa the siteSR stacks like we do with lakeSR
   tar_target(
     name = p7_qa_Landsat_files,
@@ -58,6 +65,7 @@ p7_qa_stack <- list(
       p7_check_dir_structure
       qa_and_document_LS(mission_info = p7_mission_identifiers,
                          dswe = p7_dswe_types, 
+                         metadata_files = p7_metadata_files,
                          collated_files = p6_collated_siteSR_files)
     },
     packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis"),
@@ -80,6 +88,13 @@ p7_qa_stack <- list(
                                       out_path = "7_qa_stack/export/"),
     pattern = map(p7_qa_files_list),
     packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
+  ),
+  
+  tar_target(
+    name = p7_Landsat_metadata_for_export,
+    command = prep_Landsat_for_export(file = p7_metadata_files,
+                                      file_type = "csv", 
+                                      out_path = "7_qa_stack/export/")
   )
   
 )
@@ -100,7 +115,7 @@ if (config::get(config = general_config)$update_and_share) {
           drive_auth(p0_siteSR_config$google_email)
           parent_folder <- p0_siteSR_config$drive_project_folder
           version_path <- paste0(p0_siteSR_config$drive_project_folder, 
-                                    paste0("siteSR_qa_v", p5_yml$run_date, "/"))
+                                 paste0("siteSR_qa_v", p5_yml$run_date, "/"))
           drive_ls(version_path)
         }, error = function(e) {
           # if there is an error, check both the 'collated_raw' folder and the 'version'
@@ -115,11 +130,13 @@ if (config::get(config = general_config)$update_and_share) {
     
     tar_target(
       name = p7_send_siteSR_files_to_drive,
-      command = export_single_file(file_path = p7_qa_files_list,
+      command = export_single_file(file_path = c(p7_Landsat_files_for_export,
+                                                 p7_Landsat_metadata_for_export)
                                    drive_path = p7_check_Drive_siteSR_folder,
                                    google_email = p0_siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = p7_qa_files_list
+      pattern = map(c(p7_Landsat_files_for_export,
+                      p7_Landsat_metadata_for_export)),
     ),
     
     tar_target(
