@@ -113,12 +113,11 @@ config_targets <- list(
   
   # Retrieve Drive IDs from linked repositories -------------------------------
   
-  # Google Drive IDs of exported files from the download pipeline
+  # Google Drive IDs of exported files from the download/harmonize pipeline
   
   tar_file_read(
     name = p3_chla_drive_ids,
     command = {
-      p0_check_chla_drive
       if(grepl("chla", p0_siteSR_config$parameters)) {
         paste0(p0_AquaMatch_harmonize_WQP_directory,
                "3_harmonize/out/chl_drive_ids.csv") 
@@ -133,7 +132,6 @@ config_targets <- list(
   tar_file_read(
     name = p3_sdd_drive_ids,
     command = {
-      p0_check_sdd_drive
       if(grepl("sdd", p0_siteSR_config$parameters)) {
         paste0(p0_AquaMatch_harmonize_WQP_directory,
                "3_harmonize/out/sdd_drive_ids.csv") 
@@ -148,7 +146,6 @@ config_targets <- list(
   tar_file_read(
     name = p3_doc_drive_ids,
     command = {
-      p0_check_doc_drive
       if(grepl("doc", p0_siteSR_config$parameters)) {
         paste0(p0_AquaMatch_harmonize_WQP_directory,
                "3_harmonize/out/doc_drive_ids.csv") 
@@ -163,7 +160,6 @@ config_targets <- list(
   tar_file_read(
     name = p3_tss_drive_ids,
     command = {
-      p0_check_tss_drive
       if(grepl("tss", p0_siteSR_config$parameters)) {
         paste0(p0_AquaMatch_harmonize_WQP_directory,
                "3_harmonize/out/tss_drive_ids.csv") 

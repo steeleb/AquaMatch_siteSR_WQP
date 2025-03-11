@@ -18,7 +18,7 @@ prep_Landsat_for_export <- function(file, file_type, out_path) {
     stop("file_type argument unrecognized, only 'csv' and 'feather' are acceptable")
   }
   
-  if (!grepl("_DSWE1_|_DSWE1a_|_DSWE3_|metatdata", file)) {
+  if (!grepl("_DSWE1_|_DSWE1a_|_DSWE3_|metadata", file)) {
     stop("File type not recognized from file name, this function does not operate
          without a valid DSWE type or `metadata` in the file name.")
   }
@@ -65,7 +65,7 @@ prep_Landsat_for_export <- function(file, file_type, out_path) {
     
     # filter out images with poor Image Quality (we do this for all sites)
     # make the name for image quality, since it changes through mission groups
-    image_qual_name <- if (mission_info$mission_id %in% c("LT04", "LT05", "LE07")) {
+    image_qual_name <- if (grepl("LS457", file)) {
       "IMAGE_QUALITY"
     } else {
       "IMAGE_QUALITY_OLI"

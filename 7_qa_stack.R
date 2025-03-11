@@ -68,7 +68,7 @@ p7_qa_stack <- list(
                          metadata_files = p7_metadata_files,
                          collated_files = p6_collated_siteSR_files)
     },
-    packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis"),
+    packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis", "stringi"),
     pattern = cross(p7_mission_identifiers, p7_dswe_types),
   ),
   
@@ -94,7 +94,9 @@ p7_qa_stack <- list(
     name = p7_Landsat_metadata_for_export,
     command = prep_Landsat_for_export(file = p7_metadata_files,
                                       file_type = "csv", 
-                                      out_path = "7_qa_stack/export/")
+                                      out_path = "7_qa_stack/export/"),
+    pattern = map(p7_metadata_files),
+    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
   )
   
 )
@@ -130,20 +132,30 @@ if (config::get(config = general_config)$update_and_share) {
     
     tar_target(
       name = p7_send_siteSR_files_to_drive,
-      command = export_single_file(file_path = c(p7_Landsat_files_for_export,
-                                                 p7_Landsat_metadata_for_export)
+      command = export_single_file(file_path = p7_Landsat_files_for_export,
                                    drive_path = p7_check_Drive_siteSR_folder,
                                    google_email = p0_siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = map(c(p7_Landsat_files_for_export,
-                      p7_Landsat_metadata_for_export)),
+      pattern = map(p7_Landsat_files_for_export)
+    ),
+    
+    tar_target(
+      name = p7_send_metadata_files_to_drive,
+      command = export_single_file(file_path = p7_Landsat_metadata_for_export,
+                                   drive_path = p7_check_Drive_siteSR_folder,
+                                   google_email = p0_siteSR_config$google_email),
+      packages = c("tidyverse", "googledrive"),
+      pattern = map(p7_Landsat_metadata_for_export)
     ),
     
     tar_target(
       name = p7_save_siteSR_drive_info,
       command = {
-        drive_ids <- p7_send_siteSR_files_to_drive %>% 
+        drive_ids_site <- p7_send_siteSR_files_to_drive %>% 
           select(name, id)
+        drive_ids_meta <- p7_send_metadata_files_to_drive %>% 
+          select(name, id)
+        drive_ids <- bind_rows(drive_ids_site, drive_ids_meta) 
         write_csv(drive_ids,
                   paste0("7_qa_stack/out/siteSR_qa_files_drive_ids_v",
                          p0_siteSR_config$run_date,
@@ -153,6 +165,8 @@ if (config::get(config = general_config)$update_and_share) {
       packages = c("tidyverse", "googledrive"),
       deployment = "main"
     )
+    
   )
+  
 }
 
