@@ -88,7 +88,7 @@ qa_and_document_LS <- function(mission_info,
                     
                     data <- read_feather(fp) 
                     setDT(data)
-                    data[, sat_id := stri_replace_last_regex(`system:index`, "_\\d{4}_\\d+$", "")]
+                    data[, sat_id := stri_replace_last_regex(`system:index`, "_[^_]+$", "")]
                     
                     all_data <- nrow(data)
                     # note, this workflow iteratively overwrites the 'data' 
