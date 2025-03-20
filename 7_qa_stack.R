@@ -78,7 +78,8 @@ p7_qa_stack <- list(
     command = {
       p7_qa_Landsat_files
       list.files("7_qa_stack/qa/", full.names = TRUE)
-    }
+    },
+    cue = tar_cue("always")
   ),
   
   tar_target(
@@ -158,7 +159,7 @@ if (config::get(config = general_config)$update_and_share) {
         drive_ids <- bind_rows(drive_ids_site, drive_ids_meta) 
         write_csv(drive_ids,
                   paste0("7_qa_stack/out/siteSR_qa_files_drive_ids_v",
-                         p0_siteSR_config$run_date,
+                         p5_yml$run_date,
                          ".csv"))
         drive_ids
       },
