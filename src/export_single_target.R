@@ -18,11 +18,12 @@
 #' @param feather Logical value. If TRUE, export the file as a feather file. If
 #' FALSE, then ".rds". Defaults to FALSE.
 #' 
-#' @returns 
-#' Returns a local path to a csv file containing a text link to the uploaded
-#' file in Google Drive.
+#' @param date_stamp character string to version target by
 #' 
-export_single_target <- function(target, drive_path, stable, google_email,
+#' @returns
+#' None. 
+#' 
+export_single_target <- function(target, drive_path, stable = FALSE, google_email,
                                  date_stamp, feather = FALSE){
   
   # Feather or RDS?
@@ -39,12 +40,16 @@ export_single_target <- function(target, drive_path, stable, google_email,
   file_local_path <- tempfile(fileext = extension)
   
   # If feather == TRUE then .feather; else .rds
-  if(feather){
+  if (feather) {
     write_feather(x = target,
                   path = file_local_path)
   } else {
     write_rds(x = target,
               file = file_local_path)
+  }
+  
+  if (!is.null(date_stamp)) {
+    target_string <- paste0(target_string, "_v", date_stamp)
   }
   
   # Once locally exported, send to Google Drive
@@ -60,6 +65,7 @@ export_single_target <- function(target, drive_path, stable, google_email,
   
   # If stable == TRUE then export a second, dated file to the stable/ subfolder
   if(stable){
+    
     drive_path_stable <- paste0(drive_path, "stable/")
     
     # Once locally exported, send to Google Drive
