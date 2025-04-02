@@ -18,7 +18,7 @@ default:
   run_pekel: FALSE 
   run_GEE: FALSE
   pekel_gee_version: "2025-02-24"
-  update_and_share: TRUE # indication of whether of not the 'export' siteSR files should be 
+  update_and_share: FALSE # indication of whether of not the 'export' siteSR files should be 
   # uploaded to Drive, requires drive_project_folder if set to TRUE
 # Update the stable dataset version for one or more parameters
 admin_update:
