@@ -16,12 +16,12 @@ _targets/
 **.DS_Store
 
 # Workflow-specific filepaths
-4_compile_sites/in/*
-4_compile_sites/mid/*
-4_compile_sites/out/*
-4_compile_sites/nhd/*
-!4_compile_sites/out/collated_sites_drive_id.csv
-!4_compile_sites/out/harmonized_sites_drive_id.csv
+a_compile_sites/in/*
+a_compile_sites/mid/*
+a_compile_sites/out/*
+a_compile_sites/nhd/*
+!a_compile_sites/out/collated_sites_drive_id.csv
+!a_compile_sites/out/harmonized_sites_drive_id.csv
 
 5_determine_RS_visibility/mid/*
 5_determine_RS_visibility/down/*
