@@ -13,7 +13,7 @@ tar_source("python/pySetup.R")
 
 # Set general configuration setting: -----------------------------
 
-general_config <- "default"
+general_config <- "admin_update"
 
 
 # Set up crew controller for multicore processing ------------------------
