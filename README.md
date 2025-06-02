@@ -33,7 +33,3 @@ This group of {targets} acquires Landsat Collection 2 SRST stacks for sites dete
 **7_siteSR_qa:**
 
 Collated Landsat data are filtered for quality based on broadly applicable thresholds.
-
-**8_siteSR_matchup:**
-
-forthcoming
