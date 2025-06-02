@@ -37,7 +37,7 @@ add_HUC8_to_sites <- function(sites_without_HUC) {
     filter(!is.na(HUCEightDigitCode))
   # make a list of the sites that couldn't be assigned
   failed_to_assign <- sites_without_HUC %>% 
-    filter(!loc_id %in% HUC08_assigned$loc_id)
+    filter(!siteSR_id %in% HUC08_assigned$siteSR_id)
   # save to file
   write_csv(failed_to_assign, "a_compile_sites/out/sites_unable_to_assign_HUC08.csv")
   # return assigned file

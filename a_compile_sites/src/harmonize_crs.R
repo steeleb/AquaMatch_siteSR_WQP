@@ -60,11 +60,13 @@ harmonize_crs <- function(sites) {
               by = "HorizontalCoordinateReferenceSystemDatumName") 
   
   # Check to see if there are any sites that have CRS not in the tribble above,
-  # if so, stop and message!
+  # if so, assume EPSG 4326, but provide warning
   if (nrow(filter(site_w_epsg, is.na(epsg))) > 0) {
-    stop("There is at least one CRS datum in the site list that is not included 
+    warning("There is at least one CRS datum in the site list that is not included 
           in the translate table. Add missing datum to the harmonize_crs script 
           and re-run the pipeline.")
+    site_w_epsg <- site_w_epsg %>% 
+      mutate(if_else(is.na(epsg), 4326, epsg))
   }
   
   # Transform to common CRS WGS84 so we can have a single sf object
@@ -86,5 +88,5 @@ harmonize_crs <- function(sites) {
   
   # Return sf object
   site_sf_unified
-
+  
 }
