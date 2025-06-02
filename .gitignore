@@ -23,23 +23,23 @@ a_compile_sites/nhd/*
 !a_compile_sites/out/collated_sites_drive_id.csv
 !a_compile_sites/out/harmonized_sites_drive_id.csv
 
-5_determine_RS_visibility/mid/*
-5_determine_RS_visibility/down/*
-5_determine_RS_visibility/run/*
-5_determine_RS_visibility/out/*
-!5_determine_RS_visibility/out/gee_yml_id.csv
-!5_determine_RS_visibility/out/visible_site_id.csv
+b_determine_RS_visibility/mid/*
+b_determine_RS_visibility/down/*
+b_determine_RS_visibility/run/*
+b_determine_RS_visibility/out/*
+!b_determine_RS_visibility/out/gee_yml_id.csv
+!b_determine_RS_visibility/out/visible_site_id.csv
 
 
-6_siteSR_stack/down/*
-6_siteSR_stack/out/*
-6_siteSR_stack/run/*
-!6_siteSR_stack/out/raw_collated_files_drive_ids.csv
+c_siteSR_stack/down/*
+c_siteSR_stack/out/*
+c_siteSR_stack/run/*
+!c_siteSR_stack/out/raw_collated_files_drive_ids.csv
 
-7_qa_stack/qa/*
-7_qa_stack/out/*
-7_qa_stack/export/*
-!7_qa_stack/out/siteSR_qa_files_drive_ids_v2025-02-24.csv
+d_qa_stack/qa/*
+d_qa_stack/out/*
+d_qa_stack/export/*
+!d_qa_stack/out/siteSR_qa_files_drive_ids_v2025-02-24.csv
 
 
 # Python environment
