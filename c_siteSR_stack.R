@@ -4,6 +4,10 @@
 
 tar_source(files = "6_siteSR_stack/src/")
 
+# Set up python virtual environment ---------------------------------------
+library(reticulate)
+tar_source("python/pySetup.R")
+
 
 # Define {targets} workflow -----------------------------------------------
 

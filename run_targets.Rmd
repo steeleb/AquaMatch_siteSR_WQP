@@ -23,11 +23,6 @@ configuration profiles: "default", "admin_update", and "use_stable".
     datasets made with AquaMatch_harmonize_WQP. This requires that the
     AquaMatch_harmonize_WQP pipeline has been run locally.
 
--   "use_stable" uses publicly-posted stable versions of datasets from
-    AquaMatch_harmonize_WQP and is intended for those who wish to modify choices
-    made in siteSR_WQP or for those who wish to have the complete pipeline on
-    their local device. This is the recommended setting for most users.
-
 -   "admin_update" is intended for use by ROSSyndicate members when updating
     siteSR datasets and create publicly-stable versions of the siteSR_WQP to be
     stored in the AquaMatch_siteSR_WQP repository.
@@ -49,10 +44,10 @@ configuration will require that the harmonize pipeline has been run locally.
 ```{r package_installer, echo = F}
 package_installer <- function(x) {
   if (x %in% installed.packages()) {
-    print(paste0('{', x ,'} package is already installed.'))
+    print(paste0("{", x ,"} package is already installed."))
     } else {
       install.packages(x)
-      print(paste0('{', x ,'} package has been installed.'))
+      print(paste0("{", x ,"} package has been installed."))
     }
   }
 ```
@@ -61,14 +56,17 @@ List packages that need to be checked for install, and walk the function along
 them all.
 
 ```{r walk_package_installer, message = F}
-packages <- c('tidyverse',
-              'reticulate',
-              'targets',
-              'tarchetypes',
-              'yaml',
-              'nhdplusTools',
-              'polylabelr',
-              'sf')
+packages <- c("config",
+              "crew",
+              "nhdplusTools",
+              "polylabelr",
+              "reticulate",
+              "sf", 
+              "tarchetypes",
+              "targets",
+              "tidyverse",
+              "xml2",
+              "yaml")
 
 lapply(packages, package_installer)
 ```
@@ -88,7 +86,7 @@ the R file 'src/py/pySetup.R'. This will take a few minutes if you haven't yet
 run the python setup script while it creates a virtual environment.
 
 ```{r}
-source('src/py/pySetup.R')
+source("src/py/pySetup.R")
 ```
 
 ### Authenticate your instance of GEE
@@ -96,7 +94,7 @@ source('src/py/pySetup.R')
 ```{python}
 import ee
 
-ee.Authenticate(auth_mode = 'localhost')
+ee.Authenticate(auth_mode = "localhost")
 ```
 
 ### Configuration

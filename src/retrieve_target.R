@@ -15,8 +15,8 @@
 #' @param google_email A string containing the gmail address to use for
 #' Google Drive authentication.
 #' 
-#' @param file_type A string giving the file extension to be used. (".rds" or 
-#' ".feather")
+#' @param file_type A string giving the file extension to be used. ("rds", "csv", or 
+#' "feather")
 #' 
 #' @param date_stamp A string containing an eight-digit date (i.e., in
 #' ISO 8601 "basic" format: YYYYMMDD) that should be used to identify the
@@ -26,22 +26,28 @@
 #' The dataset after being downloaded and read into the pipeline from Google Drive.
 #' 
 retrieve_target <- function(target, id_df, local_folder, 
-                          google_email, file_type = ".rds", 
+                          google_email, file_type = "rds", 
                           date_stamp = NULL){
+  
+  if (!file_type %in% c("feather", "rds", "csv")) {
+    stop("File type unrecognized. Acceptable arguments for `file_type` include feather, rds, csv.")
+  }
+  
+  extension <- paste0(".", file_type)
   
   # Authorize using the google email provided
   drive_auth(google_email)
   
   # Local file download location
-  local_path <- file.path(local_folder, paste0(target, file_type))
+  local_path <- file.path(local_folder, paste0(target, extension))
   
   if(!is.null(date_stamp)){
     
-    file_name <- paste0(target, "_v", date_stamp, file_type)
+    file_name <- paste0(target, "_v", date_stamp, extension)
     
   } else {
     
-    file_name <- paste0(target, file_type)
+    file_name <- paste0(target, extension)
     
   }
   
@@ -56,21 +62,19 @@ retrieve_target <- function(target, id_df, local_folder,
                  path = local_path,
                  overwrite = TRUE)
   
-  # Read dataset into pipeline
-  if(file_type == ".rds"){
-    
-    return(read_rds(local_path))
-    
-  } else if(file_type == ".feather"){
-    
-    return(read_feather(local_path))   
-    
-  } else {
-    
-    stop("file_type does not appear to be either .rds or .feather.")
-    
+  # store read function and then read file
+  if (file_type == "rds") {
+    read_function <- read_rds
+  }
+  if (file_type == "feather") {
+    read_function <- read_feather
+  }
+  if (file_type == "csv") {
+    read_function <- read_csv
   }
   
+  return(read_function(local_path))
+
   unlink(local_path)
   
 }

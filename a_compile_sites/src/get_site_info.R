@@ -37,7 +37,7 @@ get_site_info <- function(fips_state_code_desc, site_source){
                      "Estuary", "Stream: Canal", "River/Stream", "Lake", 
                      "Great Lake", "River/Stream Intermittent", "Reservoir",
                      "Other-Surface Water", "River/Stream Perennial", "Channelized Stream")
-      
+    
   } else {
     safe_site <- safely(.f = ~whatNWISsites(statecode = .x))
     filter_param <- sym("site_tp_cd")
@@ -46,28 +46,23 @@ get_site_info <- function(fips_state_code_desc, site_source){
   
   # Map pull, returning a list of result/error list item pairs for the state code.
   # Each result, if not an error, will be a data frame
-  raw_sites <- map(
-    .x = fips_state_code_desc,
-    .f = ~ safe_site(.x)
-  )
+  raw_sites <- safe_site(fips_state_code_desc)
   
-  # Clean the outputs of the pull:
-  metadata <- raw_sites %>%
-    # transpose into a list with 2 items: result and error
-    transpose() %>%
-    # keep only results
-    pluck("result") %>%
-    # ensure that all dfs have compatible column types
-    map(.f = ~.x %>%
-          mutate(across(everything(), ~as.character(.x)))
-    ) %>% 
-    bind_rows() %>% 
-    # filter for site types that include surface water
-    filter(!!filter_param %in%
-             filter_list) %>% 
-    mutate(source = site_source)
+  # Grab the results list:
+  metadata <- raw_sites$result 
   
-  # return the final product
-  metadata
+  # Check for data, and return the dataframe if it's not NULL
+  if (!is.null(metadata)) {
+    metadata <- metadata %>%
+      # filter for site types that include surface water
+      filter(!!filter_param %in%
+               filter_list) %>% 
+      # make sure all columns are character for later collation
+      mutate(across(everything(),
+                     ~ as.character(.))) %>% 
+      # add source column
+      mutate(source = site_source)
+    return(metadata)
+  }
   
 }

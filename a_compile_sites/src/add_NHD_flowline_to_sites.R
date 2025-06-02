@@ -52,7 +52,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       # if huc4 >= 1900, process differently, as nhdtools fl is limited to CONUS
       
       # make sure the geopackage hasn't already been downloaded
-      if (!file.exists(file.path("4_compile_sites/nhd/",
+      if (!file.exists(file.path("a_compile_sites/nhd/",
                                  paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")))) {
         
         # but if it isn't, download it!
@@ -62,23 +62,23 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         
         # url for the NHD Best Resolution for HUC4
         url = paste0("https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/HU4/GPKG/NHD_H_", huc4, "_HU4_GPKG.zip")
-        download.file(url, destfile = file.path("4_compile_sites/nhd/", 
+        download.file(url, destfile = file.path("a_compile_sites/nhd/", 
                                                 paste0(huc4, ".zip")))
         
-        unzip(file.path("4_compile_sites/nhd/", 
+        unzip(file.path("a_compile_sites/nhd/", 
                         paste0(huc4, ".zip")), 
-              exdir = "4_compile_sites/nhd/")
+              exdir = "a_compile_sites/nhd/")
         
         # remove zip
-        unlink(file.path("4_compile_sites/nhd/", 
+        unlink(file.path("a_compile_sites/nhd/", 
                          paste0(huc4, ".zip")))
       }
       
       # open the NHD flowline layer, coerce to a {sf} object
-      huc4_fl <- st_read(file.path("4_compile_sites/nhd/",
+      huc4_fl <- st_read(file.path("a_compile_sites/nhd/",
                                    paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")),
                          layer = "NHDFlowline") %>% 
-        # only grab stream/river
+        # only grab stream/river and artificail path
         # 556 = coastline, 428 = pipeline, 336 = canal/ditch
         # 460 = stream/river, 468 = drainageway, 558 = artificial path (in waterbody),
         # 420 = underground conduit, 334 = connector
@@ -142,12 +142,12 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     
     
     
-    # we'll associate flowlines across all sites.  are paired to
+    # we'll associate flowlines across all sites. locs are paired to
     # waterbodies in add_NHD_waterbody_to_sites()
     huc4_flowline_points <- sf_subset %>%
       filter(grepl("river|stream|lake|reservoir", MonitoringLocationTypeName, ignore.case = T))
     
-    # Assign waterbodies to flowline points -------------------------------------
+    # Assign flowline info to flowline points -------------------------------------
     
     # check to see if there are any points overlapping, if so, run matching
     # process. otherwise, return NULL
@@ -217,13 +217,13 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     # if subset failed, note and go to next 
     message(paste0("HUC4 ", huc4, " was not able to be processed, 
                      noting in '4_compile_sites/mid/huc4_fl_no_process.txt'"))
-    if (!file.exists("4_compile_sites/mid/huc4_fl_no_process.txt")) {
-      write_lines(huc4, file = "4_compile_sites/mid/huc4_fl_no_process.txt")
+    if (!file.exists("a_compile_sites/mid/huc4_fl_no_process.txt")) {
+      write_lines(huc4, file = "a_compile_sites/mid/huc4_fl_no_process.txt")
       return(NULL)
     } else {
-      text <- read_lines("4_compile_sites/mid/huc4_fl_no_process.txt")
+      text <- read_lines("a_compile_sites/mid/huc4_fl_no_process.txt")
       new_text <- c(text, huc4)
-      write_lines(new_text, "4_compile_sites/mid/huc4_fl_no_process.txt")
+      write_lines(new_text, "a_compile_sites/mid/huc4_fl_no_process.txt")
       return(NULL)
     }
   })

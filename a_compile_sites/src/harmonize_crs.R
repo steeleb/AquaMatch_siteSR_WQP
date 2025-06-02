@@ -44,6 +44,7 @@ harmonize_crs <- function(sites) {
     # Assume WGS84
     "UNKWN", 4326,
     "Unknown", 4326,
+    NA, 4326,
     # Wake-Eniwetok 1960
     "WAKE", 37229,
     # World Geodetic System 1972
