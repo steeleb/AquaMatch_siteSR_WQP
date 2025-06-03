@@ -22,7 +22,7 @@ This initial group of targets checks the configuration settings in config.yml an
 
 **a_compile_sites:**
 
-This {targets} group collates all sites in the US and Territories that are stored in WQP and NWIS, creating a list of locations for which to acquire remote sensing data. All locations are associated with a HUC8 if one is not listed in the metadata for the site from the WQP, then the unique HUC4s are used to associate points with waterbodies and flowlines of the NHDPlusV2 (CONUS) or NHD Best Resolution (non-CONUS HUCs) files. This step will take about one day to run, depending on the number of cores available for processing.
+This {targets} group collates all sites in the US and Territories that are stored in WQP and NWIS, creating a list of locations for which to acquire remote sensing data. All locations are associated with a HUC8 if one is not listed in the metadata for the site from the WQP, then the unique HUC4s are used to associate points with waterbodies and flowlines of the NHDPlusV2 (CONUS) or NHD Best Resolution (non-CONUS HUCs) files. This step will take about one day to run, depending on the number of cores available for processing. If the general configuration setting `compile_locations` is set to FALSE, this step will acquire the previously-collated sites from Google Drive for the version date listed in the setting `collated_site_version` and processing time should be very quick.
 
 **b_determine_RS_visibility:**
 
