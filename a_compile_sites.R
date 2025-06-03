@@ -6,7 +6,7 @@
 # Source the functions that will be used to build the targets in `a_compile_sites`
 tar_source(files = "a_compile_sites/src/")
 
-if (general_config != "default") {
+if (config::get(config = general_config)$compile_locations) {
   
   a_compile_sites <- list(
     
