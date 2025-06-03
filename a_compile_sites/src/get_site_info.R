@@ -41,6 +41,7 @@ get_site_info <- function(fips_state_code_desc, site_source){
   } else {
     safe_site <- safely(.f = ~whatNWISsites(statecode = .x))
     filter_param <- sym("site_tp_cd")
+    # full list of NWIS site types: https://maps.waterdata.usgs.gov/mapper/help/sitetype.html
     filter_list <- c("ES", "LK", "ST", "ST-CA", "ST-DCH")
   }
   
