@@ -23,7 +23,7 @@ add_HUC8_to_sites <- function(sites_without_HUC) {
         .f = ~ {
           tryCatch({
             # we can use the nhdplusTools package to grab this
-            one_huc <- get_huc(.x, type = "huc08")
+            one_huc <- get_huc(.x, type = "huc08", buffer = 0.1)
             .x$HUCEightDigitCode <- one_huc$huc8
             return(.x)
           },

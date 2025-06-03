@@ -158,16 +158,20 @@ if (general_config != "default") {
       command = {
         NWIS <- a_harmonized_NWIS_sites %>% 
           select(org_id = agency_cd, loc_id = site_no, 
-                 WGS84_Latitude, WGS84_Longitude, source) 
+                 WGS84_Latitude, WGS84_Longitude, source) %>% 
+          st_drop_geometry()
         WQP <- a_harmonized_WQP_sites %>% 
           select(org_id = OrganizationIdentifier, 
                  loc_id = MonitoringLocationIdentifier, 
                  HUCEightDigitCode,
-                 WGS84_Latitude, WGS84_Longitude, source) 
+                 WGS84_Latitude, WGS84_Longitude, source) %>% 
+          st_drop_geometry()
         # join together and provide a siteSR id for use
-        st_join(NWIS, WQP) %>% 
+        full_join(NWIS, WQP) %>% 
           rowid_to_column("siteSR_id") %>% 
-          relocate(siteSR_id)
+          relocate(siteSR_id) %>% 
+          st_as_sf(coords = c("WGS84_Longitude", "WGS84_Latitude"),
+                   crs = "EPSG:4326")
       },
     ), 
     
@@ -312,24 +316,24 @@ if (general_config != "default") {
                  # flag 0 = unlikely shoreline contamination
                  # flag 1 = possible shoreline contamination
                  flag_optical_shoreline =  case_when(flag_wb != 0 ~ NA,
-                                                     dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 30) &
+                                                     dist_to_shore <= (as.numeric(b_yml$site_buffer) + 30) &
                                                        flag_wb == 0 ~ 1,
-                                                     dist_to_shore > (as.numeric(p5_yml$site_buffer) + 30) &
+                                                     dist_to_shore > (as.numeric(b_yml$site_buffer) + 30) &
                                                        flag_wb == 0 ~ 0),
                  flag_thermal_TM_shoreline =  case_when(flag_wb != 0 ~ NA,
-                                                        dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 120) &
+                                                        dist_to_shore <= (as.numeric(b_yml$site_buffer) + 120) &
                                                           flag_wb == 0 ~ 1,
-                                                        dist_to_shore > (as.numeric(p5_yml$site_buffer) + 120) &
+                                                        dist_to_shore > (as.numeric(b_yml$site_buffer) + 120) &
                                                           flag_wb == 0 ~ 0),
                  flag_thermal_ETM_shoreline = case_when(flag_wb != 0 ~ NA,
-                                                        dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 60) &
+                                                        dist_to_shore <= (as.numeric(b_yml$site_buffer) + 60) &
                                                           flag_wb == 0 ~ 1,
-                                                        dist_to_shore > (as.numeric(p5_yml$site_buffer) + 60) &
+                                                        dist_to_shore > (as.numeric(b_yml$site_buffer) + 60) &
                                                           flag_wb == 0 ~ 0),
                  flag_thermal_TIRS_shoreline = case_when(flag_wb != 0 ~ NA,
-                                                         dist_to_shore <= (as.numeric(p5_yml$site_buffer) + 100) &
+                                                         dist_to_shore <= (as.numeric(b_yml$site_buffer) + 100) &
                                                            flag_wb == 0 ~ 1,
-                                                         dist_to_shore > (as.numeric(p5_yml$site_buffer) + 100) &
+                                                         dist_to_shore > (as.numeric(b_yml$site_buffer) + 100) &
                                                            flag_wb == 0 ~ 0))
         write_csv(collated_sites,
                   "a_compile_sites/out/collated_WQP_sites_with_metadata.csv")
