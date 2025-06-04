@@ -408,6 +408,7 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_sites_with_NHD_Drive_id,
       command = {
+        a_export_sites_with_NHD
         get_file_ids(google_email = siteSR_config$google_email,
                      drive_folder = check_targets_drive,
                      file_path = "a_compile_sites/out/sites_with_NHD_drive_id.csv",

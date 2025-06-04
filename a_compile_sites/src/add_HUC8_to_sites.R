@@ -39,7 +39,9 @@ add_HUC8_to_sites <- function(sites_without_HUC) {
   failed_to_assign <- sites_without_HUC %>% 
     filter(!siteSR_id %in% HUC08_assigned$siteSR_id)
   # save to file
-  write_csv(failed_to_assign, "a_compile_sites/out/sites_unable_to_assign_HUC08.csv")
+  write_csv(failed_to_assign, paste0("a_compile_sites/out/", 
+                                     unique(sites_without_HUC$source), 
+                                     "_sites_unable_to_assign_HUC08.csv"))
   # return assigned file
   bind_rows(HUC08_assigned, failed_to_assign)
 }
