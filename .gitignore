@@ -16,7 +16,6 @@ _targets/
 **.DS_Store
 
 # Workflow-specific filepaths
-a_compile_sites/in/*
 a_compile_sites/mid/*
 a_compile_sites/out/*
 a_compile_sites/nhd/*

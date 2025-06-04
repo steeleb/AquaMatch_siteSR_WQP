@@ -33,10 +33,17 @@ get_site_info <- function(fips_state_code_desc, site_source){
   if (site_source == "WQP") {
     safe_site <- safely(.f = ~whatWQPsites(statecode = .x))
     filter_param <- sym("MonitoringLocationTypeName")
-    filter_list <- c("Stream: Ditch", "Stream", "Lake, Reservoir, Impoundment",
-                     "Estuary", "Stream: Canal", "River/Stream", "Lake", 
-                     "Great Lake", "River/Stream Intermittent", "Reservoir",
-                     "Other-Surface Water", "River/Stream Perennial", "Channelized Stream")
+    filter_list <- c("Stream: Ditch", "Stream", "Stream: Canal", "Stream: Tidal stream",
+                     "River/Stream", "River/Stream Intermittent", "River/Stream Perennial",
+                     "River/Stream Ephemeral",
+                     "Riverine Impoundment",       
+                     "Estuary", 
+                     "Lake, Reservoir, Impoundment", "Lake", 
+                     "Great Lake", "Reservoir",
+                     "Other-Surface Water", "Floodwater Urban",
+                     "Pond-Stormwater", "Pond",
+                     "Canal Transport", "Canal Drainage", "Canal Irrigation",
+                     "Channelized Stream")
     
   } else {
     safe_site <- safely(.f = ~whatNWISsites(statecode = .x))

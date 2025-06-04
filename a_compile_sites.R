@@ -14,8 +14,7 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_check_dir_structure,
       command = {
-        directories <- c("a_compile_sites/in/",
-                         "a_compile_sites/mid/",
+        directories <- c("a_compile_sites/mid/",
                          "a_compile_sites/out/",
                          "a_compile_sites/nhd/")
         walk(directories, function(dir) {
@@ -72,7 +71,9 @@ if (config::get(config = general_config)$compile_locations) {
         # use function to harmonize across all CRS
         harmonized_crs <- harmonize_crs(sites = a_WQP_site_metadata)
         # return sf
-        harmonized_crs
+        harmonized_crs  %>% 
+          rowid_to_column("siteSR_id") %>% 
+          mutate(siteSR_id = paste0("WQP_", siteSR_id))
       },
       packages = c("tidyverse", "sf"),
     ),
@@ -96,83 +97,137 @@ if (config::get(config = general_config)$compile_locations) {
         to_wgs84$WGS84_Latitude = new_coords[,2]
         
         # return sf
-        to_wgs84
+        to_wgs84  %>% 
+          rowid_to_column("siteSR_id") %>% 
+          mutate(siteSR_id = paste0("NWIS_", siteSR_id))
       },
       packages = c("tidyverse", "sf"),
     ),
     
-    # save these two targets as .RDS in Drive
-    tar_target(
-      name = a_save_WQP_harmonized_sites,
-      command = {
-        export_single_target(target = a_harmonized_WQP_sites,
-                             drive_path = check_targets_drive,
-                             stable = FALSE,
-                             google_email = siteSR_config$google_email,
-                             date_stamp = siteSR_config$collated_site_version,
-                             file_type = "rds")
-      },
-      packages = c("tidyverse", "googledrive"),
-    ), 
+    # Collate site lists from AquaMatch Harmonize pipeline --------------------
     
-    tar_target(
-      name = a_save_NWIS_harmonized_sites,
-      command = {
-        export_single_target(target = a_harmonized_NWIS_sites,
-                             drive_path = check_targets_drive,
-                             stable = FALSE,
-                             google_email = siteSR_config$google_email,
-                             date_stamp = siteSR_config$collated_site_version,
-                             file_type = "rds")
-      },
-      packages = c("tidyverse", "googledrive"),
-    ), 
+    ## read the ids csv
+    tar_file_read(
+      name = a_AquaMatch_chla_drive_ids,
+      command = "a_compile_sites/in/chl_drive_ids.csv",
+      read = read_csv(!!.x)
+    ),
+    tar_file_read(
+      name = a_AquaMatch_doc_drive_ids,
+      command = "a_compile_sites/in/doc_drive_ids.csv",
+      read = read_csv(!!.x)
+    ),
+    tar_file_read(
+      name = a_AquaMatch_sdd_drive_ids,
+      command = "a_compile_sites/in/sdd_drive_ids.csv",
+      read = read_csv(!!.x)
+    ),
+    tar_file_read(
+      name = a_AquaMatch_tss_drive_ids,
+      command = "a_compile_sites/in/tss_drive_ids.csv",
+      read = read_csv(!!.x)
+    ),
     
+    # retrieve site targets
     tar_target(
-      name = a_hamonized_WQP_sites_Drive_id,
-      command = {
-        get_file_ids(google_email = siteSR_config$google_email,
-                     drive_folder = check_targets_drive, 
-                     file_path = "a_compile_sites/out/harmonized_WQP_sites_drive_id.csv", 
-                     depend = a_save_WQP_harmonized_sites, 
-                     filter_by = "a_WQP_harmonized_sites")
-      },
+      name = a_AquaMatch_chla_sites,
+      command = retrieve_target(target = "p3_chla_harmonized_site_info", 
+                                id_df = a_AquaMatch_chla_drive_ids,
+                                local_folder = "a_compile_sites/mid/", 
+                                google_email = siteSR_config$google_email, 
+                                file_type = "rds",
+                                date_stamp = "20240701") %>% 
+        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      packages = c("tidyverse", "googledrive")
+    ),
+    tar_target(
+      name = a_AquaMatch_doc_sites,
+      command = retrieve_target(target = "p3_doc_harmonized_site_info", 
+                                id_df = a_AquaMatch_doc_drive_ids,
+                                local_folder = "a_compile_sites/mid/", 
+                                google_email = siteSR_config$google_email, 
+                                file_type = "rds",
+                                date_stamp = "20240701") %>% 
+        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      packages = c("tidyverse", "googledrive")
+    ),
+    tar_target(
+      name = a_AquaMatch_sdd_sites,
+      command = retrieve_target(target = "p3_sdd_harmonized_site_info", 
+                                id_df = a_AquaMatch_sdd_drive_ids,
+                                local_folder = "a_compile_sites/mid/", 
+                                google_email = siteSR_config$google_email, 
+                                file_type = "rds",
+                                date_stamp = "20240701") %>% 
+        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      packages = c("tidyverse", "googledrive")
+    ),
+    ## TSS - Drive doesn't think there is a dated version available at this time (?)
+    tar_target(
+      name = a_AquaMatch_tss_sites,
+      command = retrieve_target(target = "p3_tss_harmonized_site_info", 
+                                id_df = a_AquaMatch_tss_drive_ids,
+                                local_folder = "a_compile_sites/mid/", 
+                                google_email = siteSR_config$google_email, 
+                                file_type = "rds") %>% 
+        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
       packages = c("tidyverse", "googledrive")
     ),
     
+    # collate and get unique sites for AquaMatch
     tar_target(
-      name = a_hamonized_NWIS_sites_Drive_id,
+      name = a_AquaMatch_sites,
       command = {
-        get_file_ids(google_email = siteSR_config$google_email,
-                     drive_folder = check_targets_drive, 
-                     file_path = "a_compile_sites/out/harmonized_NWIS_sites_drive_id.csv", 
-                     depend = a_save_NWIS_harmonized_sites, 
-                     filter_by = "a_NWIS_harmonized_sites")
-      },
-      packages = c("tidyverse", "googledrive")
+        site_list <- reduce(list(a_AquaMatch_chla_sites,
+                    a_AquaMatch_doc_sites,
+                    a_AquaMatch_sdd_sites,
+                    a_AquaMatch_tss_sites),
+               bind_rows) %>% 
+          unique() %>% 
+          rowid_to_column("siteSR_id") %>% 
+          mutate(siteSR_id = paste0("AM_", siteSR_id))
+        # return harmoinzed CRS sf object
+        harmonize_crs(site_list)
+      }
     ),
     
-    # collate the two sf files retaining just the uniqe id and wgs lat/lon
+    # Collate all locations together --------------------------------------
+    
     tar_target(
       name = a_all_site_locations,
       command = {
         NWIS <- a_harmonized_NWIS_sites %>% 
-          select(org_id = agency_cd, loc_id = site_no, 
-                 WGS84_Latitude, WGS84_Longitude, source) %>% 
-          st_drop_geometry()
+          select(siteSR_id,
+                 org_id = agency_cd, loc_id = site_no, 
+                 WGS84_Latitude, WGS84_Longitude) %>% 
+          st_drop_geometry() %>% 
+          mutate(source = "NWIS")
         WQP <- a_harmonized_WQP_sites %>% 
-          select(org_id = OrganizationIdentifier, 
+          select(siteSR_id,
+                 org_id = OrganizationIdentifier, 
                  loc_id = MonitoringLocationIdentifier, 
                  HUCEightDigitCode,
-                 WGS84_Latitude, WGS84_Longitude, source) %>% 
-          st_drop_geometry()
-        # join together and provide a siteSR id for use
-        full_join(NWIS, WQP) %>% 
-          rowid_to_column("siteSR_id") %>% 
-          relocate(siteSR_id) %>% 
+                 WGS84_Latitude, WGS84_Longitude) %>% 
+          st_drop_geometry()%>% 
+          mutate(source = "WQP")
+        AM <- a_AquaMatch_sites %>% 
+          select(siteSR_id,
+                 org_id = OrganizationIdentifier, 
+                 loc_id = MonitoringLocationIdentifier, 
+                 HUCEightDigitCode,
+                 WGS84_Latitude, WGS84_Longitude) %>% 
+          st_drop_geometry()%>% 
+          mutate(source = "AM")
+        # join together
+        reduce(list(NWIS, WQP, AM),
+               full_join) %>%  
           st_as_sf(coords = c("WGS84_Longitude", "WGS84_Latitude"),
-                   crs = "EPSG:4326")
+                   crs = "EPSG:4326") %>% 
+          group_by(source) %>% 
+          tar_group()
       },
+      iteration = "group",
+      packages = c("tidyverse", "sf", "targets")
     ), 
     
     # save this as a .rds file in drive
@@ -201,9 +256,9 @@ if (config::get(config = general_config)$compile_locations) {
       },
       packages = c("tidyverse", "googledrive")
     ),
-
+    
     # Associate location with NHD waterbody and flowline ------------------------
-
+    
     # Nearly all WQP sites have a HUC8 reported in the `HUCEightDigitCode` field, 
     # but a few need it assigned, as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
@@ -224,9 +279,10 @@ if (config::get(config = general_config)$compile_locations) {
           bind_rows(assigned_HUC8) %>%
           mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       },
+      pattern = map(a_all_site_locations),
       packages = c("tidyverse", "sf", "nhdplusTools"),
     ),
-
+    
     # Create the unique HUCs to map over, but drop those where a HUC4 was not
     # able to be assigned - processing via HUC4s is twice as fast as HUC8s
     tar_target(
@@ -248,7 +304,7 @@ if (config::get(config = general_config)$compile_locations) {
       iteration = "list",
       packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
     ),
-
+    
     # Calculate the closest flowline to each river/stream/res/lake/pond site by HUC4
     tar_target(
       name = a_add_NHD_flowline_info,
@@ -262,7 +318,7 @@ if (config::get(config = general_config)$compile_locations) {
       iteration = "list",
       packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
     ),
-
+    
     # And add that waterbody and flowline info to the unique sites with HUC info
     tar_target(
       name = a_sites_with_NHD_info,
@@ -300,7 +356,7 @@ if (config::get(config = general_config)$compile_locations) {
                                         l[2]
                                       }) %>%
           bind_rows()
-
+        
         # turns out there are a few overlapping NHD waterbody polygons that create
         # a handful of extra rows here. For the purposes of this workflow, we'll
         # just grab the larger of the two overlapping polygons.
@@ -340,7 +396,7 @@ if (config::get(config = general_config)$compile_locations) {
         collated_sites
       },
     ),
-
+    
     # save this target as an .RDS in Drive
     tar_target(
       name = a_export_sites_with_NHD,
@@ -355,7 +411,7 @@ if (config::get(config = general_config)$compile_locations) {
       },
       packages = c("tidyverse", "googledrive"),
     ),
-
+    
     tar_target(
       name = a_sites_with_NHD_Drive_id,
       command = {
@@ -388,7 +444,7 @@ if (config::get(config = general_config)$compile_locations) {
                                 id_df = a_hamonized_sites_Drive_id, 
                                 local_folder = "a_compile_sites/out/", 
                                 google_email = siteSR_config$google_email,
-                                date_stamp = siteSR_config$collated_site_version,
+                                date_stamp = paste0("v", siteSR_config$collated_site_version),
                                 file_type = "rds"),
       packages = c("tidyverse", "googledrive")
     ),
@@ -407,7 +463,7 @@ if (config::get(config = general_config)$compile_locations) {
                                 id_df = a_sites_with_NHD_Drive_id, 
                                 local_folder = "a_compile_sites/out/", 
                                 google_email = siteSR_config$google_email,
-                                date_stamp = siteSR_config$collated_site_version,
+                                date_stamp = paste0("v", siteSR_config$collated_site_version),
                                 file_type = ".rds"),
       packages = c("tidyverse", "googledrive")
     )

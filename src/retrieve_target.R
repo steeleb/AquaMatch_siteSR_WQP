@@ -43,7 +43,7 @@ retrieve_target <- function(target, id_df, local_folder,
   
   if(!is.null(date_stamp)){
     
-    file_name <- paste0(target, "_v", date_stamp, extension)
+    file_name <- paste0(target, "_", date_stamp, extension)
     
   } else {
     
