@@ -222,11 +222,9 @@ if (config::get(config = general_config)$compile_locations) {
         reduce(list(NWIS, WQP, AM),
                full_join) %>%  
           st_as_sf(coords = c("WGS84_Longitude", "WGS84_Latitude"),
-                   crs = "EPSG:4326") %>% 
-          group_by(source) %>% 
-          tar_group()
+                   crs = "EPSG:4326", 
+                   remove = FALSE) 
       },
-      iteration = "group",
       packages = c("tidyverse", "sf", "targets")
     ), 
     
@@ -259,6 +257,16 @@ if (config::get(config = general_config)$compile_locations) {
     
     # Associate location with NHD waterbody and flowline ------------------------
     
+    # we're going to group the sites by their source for processing here
+    tar_target(
+      name = a_grouped_sites,
+      command = a_all_site_locations %>% 
+        group_by(source) %>% 
+        tar_group(),
+      iteration = "group",
+      packages = c("tidyverse", "targets")
+    ),
+    
     # Nearly all WQP sites have a HUC8 reported in the `HUCEightDigitCode` field, 
     # but a few need it assigned, as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
@@ -268,18 +276,18 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_sites_add_HUC8,
       command = {
-        need_HUC8 <- a_all_site_locations %>%
+        need_HUC8 <- a_grouped_sites %>%
           filter(is.na(HUCEightDigitCode)) %>%
           # default the flag to 1 and reassign if HUC can not be added
           mutate(flag_HUC8 = 1)
         assigned_HUC8 <- add_HUC8_to_sites(sites_without_HUC = need_HUC8)
-        a_all_site_locations %>%
+        a_grouped_sites %>%
           filter(!is.na(HUCEightDigitCode)) %>%
           mutate(flag_HUC8 = 0) %>%
           bind_rows(assigned_HUC8) %>%
           mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       },
-      pattern = map(a_all_site_locations),
+      pattern = map(a_grouped_sites),
       packages = c("tidyverse", "sf", "nhdplusTools"),
     ),
     
