@@ -264,7 +264,7 @@ if (config::get(config = general_config)$compile_locations) {
         group_by(source) %>% 
         tar_group(),
       iteration = "group",
-      packages = c("tidyverse", "targets")
+      packages = c("tidyverse", "sf", "targets")
     ),
     
     # Nearly all WQP sites have a HUC8 reported in the `HUCEightDigitCode` field, 
@@ -276,18 +276,18 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_sites_add_HUC8,
       command = {
-        need_HUC8 <- a_grouped_sites %>%
+        need_HUC8 <- a_all_site_locations %>%
           filter(is.na(HUCEightDigitCode)) %>%
           # default the flag to 1 and reassign if HUC can not be added
           mutate(flag_HUC8 = 1)
         assigned_HUC8 <- add_HUC8_to_sites(sites_without_HUC = need_HUC8)
-        a_grouped_sites %>%
+        a_all_site_locations %>%
           filter(!is.na(HUCEightDigitCode)) %>%
           mutate(flag_HUC8 = 0) %>%
           bind_rows(assigned_HUC8) %>%
           mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       },
-      pattern = map(a_grouped_sites),
+      pattern = map(a_all_site_locations),
       packages = c("tidyverse", "sf", "nhdplusTools"),
     ),
     
