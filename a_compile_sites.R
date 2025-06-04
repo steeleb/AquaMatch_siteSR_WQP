@@ -43,13 +43,8 @@ if (config::get(config = general_config)$compile_locations) {
     # map the descriptions to get all filtered site metadata for WQP
     tar_target(
       name = a_WQP_site_metadata,
-      command = {
-        # get site info
-        site_info <- get_site_info(fips_state_code_desc = a_fips_descriptions,
-                                   site_source = "WQP")
-        # check for dupes
-        site_info
-      },
+      command = get_site_info(fips_state_code_desc = a_fips_descriptions,
+                                   site_source = "WQP"),
       pattern = map(a_fips_descriptions),
       packages = c("tidyverse", "dataRetrieval")
     ),
@@ -70,8 +65,13 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         # use function to harmonize across all CRS
         harmonized_crs <- harmonize_crs(sites = a_WQP_site_metadata)
-        # return sf
+        # return sf, with only applicable columns
         harmonized_crs  %>% 
+          select(org_id = OrganizationIdentifier, loc_id = MonitoringLocationIdentifier,
+                 MonitoringLocationTypeName, HUCEightDigitCode, WGS84_Latitude, WGS84_Longitude,
+                 source) %>% 
+          st_drop_geometry() %>% 
+          unique() %>% 
           rowid_to_column("siteSR_id") %>% 
           mutate(siteSR_id = paste0("WQP_", siteSR_id))
       },
@@ -93,11 +93,14 @@ if (config::get(config = general_config)$compile_locations) {
         new_coords <- to_wgs84 %>% st_coordinates()
         
         # add WGS84 lat/long
-        to_wgs84$WGS84_Longitude = new_coords[,1]
-        to_wgs84$WGS84_Latitude = new_coords[,2]
+        to_wgs84$WGS84_Longitude = round(new_coords[,1], 5)
+        to_wgs84$WGS84_Latitude = round(new_coords[,2], 5)
         
-        # return sf
+        # return sf, with only applicable columns
         to_wgs84  %>% 
+          select(org_id = agency_cd, loc_id = site_no, WGS84_Latitude, WGS84_Longitude, source) %>% 
+          st_drop_geometry() %>% 
+          unique() %>%
           rowid_to_column("siteSR_id") %>% 
           mutate(siteSR_id = paste0("NWIS_", siteSR_id))
       },
@@ -179,15 +182,19 @@ if (config::get(config = general_config)$compile_locations) {
       name = a_AquaMatch_sites,
       command = {
         site_list <- reduce(list(a_AquaMatch_chla_sites,
-                    a_AquaMatch_doc_sites,
-                    a_AquaMatch_sdd_sites,
-                    a_AquaMatch_tss_sites),
-               bind_rows) %>% 
+                                 a_AquaMatch_doc_sites,
+                                 a_AquaMatch_sdd_sites,
+                                 a_AquaMatch_tss_sites),
+                            bind_rows) 
+        # harmonize crs, select only the columns we care about and 
+        harmonize_crs(site_list) %>% 
+          select(org_id = OrganizationIdentifier, loc_id = MonitoringLocationIdentifier,
+                 MonitoringLocationTypeName, HUCEightDigitCode, 
+                 WGS84_Latitude, WGS84_Longitude) %>% 
           unique() %>% 
           rowid_to_column("siteSR_id") %>% 
-          mutate(siteSR_id = paste0("AM_", siteSR_id))
-        # return harmoinzed CRS sf object
-        harmonize_crs(site_list)
+          mutate(siteSR_id = paste0("AM_", siteSR_id),
+                 source = "AM")
       }
     ),
     
@@ -196,30 +203,8 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_all_site_locations,
       command = {
-        NWIS <- a_harmonized_NWIS_sites %>% 
-          select(siteSR_id,
-                 org_id = agency_cd, loc_id = site_no, 
-                 WGS84_Latitude, WGS84_Longitude) %>% 
-          st_drop_geometry() %>% 
-          mutate(source = "NWIS")
-        WQP <- a_harmonized_WQP_sites %>% 
-          select(siteSR_id,
-                 org_id = OrganizationIdentifier, 
-                 loc_id = MonitoringLocationIdentifier, 
-                 HUCEightDigitCode,
-                 WGS84_Latitude, WGS84_Longitude) %>% 
-          st_drop_geometry()%>% 
-          mutate(source = "WQP")
-        AM <- a_AquaMatch_sites %>% 
-          select(siteSR_id,
-                 org_id = OrganizationIdentifier, 
-                 loc_id = MonitoringLocationIdentifier, 
-                 HUCEightDigitCode,
-                 WGS84_Latitude, WGS84_Longitude) %>% 
-          st_drop_geometry()%>% 
-          mutate(source = "AM")
         # join together
-        reduce(list(NWIS, WQP, AM),
+        reduce(list(a_harmonized_NWIS_sites, a_harmonized_WQP_sites, a_AquaMatch_sites),
                full_join) %>%  
           st_as_sf(coords = c("WGS84_Longitude", "WGS84_Latitude"),
                    crs = "EPSG:4326", 

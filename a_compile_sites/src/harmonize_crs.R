@@ -83,8 +83,8 @@ harmonize_crs <- function(sites) {
   
   # Store harmonized Latitude and Longitude in site list
   new_coords <- site_sf_unified %>% st_coordinates()
-  site_sf_unified$WGS84_Longitude = new_coords[,1]
-  site_sf_unified$WGS84_Latitude = new_coords[,2]
+  site_sf_unified$WGS84_Longitude = round(new_coords[,1], 5)
+  site_sf_unified$WGS84_Latitude = round(new_coords[,2], 5)
   
   # Return sf object
   site_sf_unified
