@@ -44,7 +44,7 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_WQP_site_metadata,
       command = get_site_info(fips_state_code_desc = a_fips_descriptions,
-                                   site_source = "WQP"),
+                              site_source = "WQP"),
       pattern = map(a_fips_descriptions),
       packages = c("tidyverse", "dataRetrieval")
     ),
@@ -256,7 +256,7 @@ if (config::get(config = general_config)$compile_locations) {
     # but a few need it assigned, as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
     # 0 = HUC8 reported in WQP site information
-    # 1 = HUC8 determined from NHDPlusV2
+    # 1 = HUC8 determined from nhdplusTools (from NHD)
     # 2 = HUC8 unable to be determined for site location
     tar_target(
       name = a_sites_add_HUC8,
@@ -273,14 +273,21 @@ if (config::get(config = general_config)$compile_locations) {
           mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
       },
       pattern = map(a_grouped_sites),
-      packages = c("tidyverse", "sf", "nhdplusTools"),
+      iteration = "list",
+      packages = c("tidyverse", "sf", "targets", "nhdplusTools"),
     ),
     
     # Create the unique HUCs to map over, but drop those where a HUC4 was not
-    # able to be assigned - processing via HUC4s is twice as fast as HUC8s
+    # able to be assigned - processing via HUC4s is twice as fast as HUC8s.
+    # Do this using DT for quick processing
     tar_target(
       name = a_HUC4_list,
-      command = unique(str_sub(na.omit(a_sites_add_HUC8$HUCEightDigitCode), 1, 4)),
+      command = {
+        dt <- map(a_sites_add_HUC8, as.data.table) %>% 
+          rbindlist() 
+        unique(str_sub(dt[!is.na(HUCEightDigitCode), HUCEightDigitCode], 1, 4))
+      },
+      packages = c("data.table", "tidyverse")
     ),
     
     # Get the waterbodies associated with each lake/reservoir site by HUC4, 
@@ -293,7 +300,7 @@ if (config::get(config = general_config)$compile_locations) {
                                    huc4 = a_HUC4_list,
                                    GEE_buffer = as.numeric(b_yml$site_buffer))
       },
-      pattern = map(a_HUC4_list),
+      pattern = cross(a_HUC4_list, a_sites_add_HUC8),
       iteration = "list",
       packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
     ),
@@ -307,7 +314,7 @@ if (config::get(config = general_config)$compile_locations) {
                                   huc4 = a_HUC4_list,
                                   GEE_buffer = as.numeric(b_yml$site_buffer))
       },
-      pattern = map(a_HUC4_list),
+      pattern = cross(a_HUC4_list, a_sites_add_HUC8),
       iteration = "list",
       packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
     ),
