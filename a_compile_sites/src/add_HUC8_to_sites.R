@@ -3,10 +3,10 @@
 #' @description
 #' This function uses the location of a site to determine the HUC8 it
 #' falls within and assigns that text to the `HUCEightDigitCode` column native
-#' to the WQP site information. This is only run for sites where the `HUCEightDigitCode`
-#' is NA
+#' to the WQP/NIWS site information. This is only run for sites where the 
+#' `HUCEightDigitCode` is NA
 #' 
-#' @param sites_without_HUC a simple feature object of WQP sites that do not have
+#' @param sites_without_HUC a simple feature object of WQP/NWIS sites that do not have
 #' the `HUCEightDigitCode` column populated.
 #' 
 #' @returns a simple feature object with `HUCEightDigitCode` populated if the 
