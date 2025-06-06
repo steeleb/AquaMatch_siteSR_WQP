@@ -134,46 +134,57 @@ if (config::get(config = general_config)$compile_locations) {
     # retrieve site targets
     tar_target(
       name = a_AquaMatch_chla_sites,
-      command = retrieve_target(target = "p3_chla_harmonized_site_info", 
-                                id_df = a_AquaMatch_chla_drive_ids,
-                                local_folder = "a_compile_sites/mid/", 
-                                google_email = siteSR_config$google_email, 
-                                file_type = "rds",
-                                date_stamp = "20240701") %>% 
-        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      command = {
+        a_check_dir_structure
+        retrieve_target(target = "p3_chla_harmonized_site_info", 
+                        id_df = a_AquaMatch_chla_drive_ids,
+                        local_folder = "a_compile_sites/mid/", 
+                        google_email = siteSR_config$google_email, 
+                        file_type = "rds",
+                        date_stamp = "20240701") %>% 
+          filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
+      }, 
       packages = c("tidyverse", "googledrive")
     ),
     tar_target(
-      name = a_AquaMatch_doc_sites,
-      command = retrieve_target(target = "p3_doc_harmonized_site_info", 
-                                id_df = a_AquaMatch_doc_drive_ids,
-                                local_folder = "a_compile_sites/mid/", 
-                                google_email = siteSR_config$google_email, 
-                                file_type = "rds",
-                                date_stamp = "20240701") %>% 
-        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      name = a_AquaMatch_doc_sites {
+        a_check_dir_structure
+        command = retrieve_target(target = "p3_doc_harmonized_site_info", 
+                                  id_df = a_AquaMatch_doc_drive_ids,
+                                  local_folder = "a_compile_sites/mid/", 
+                                  google_email = siteSR_config$google_email, 
+                                  file_type = "rds",
+                                  date_stamp = "20240701") %>% 
+          filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
+      },
       packages = c("tidyverse", "googledrive")
     ),
     tar_target(
       name = a_AquaMatch_sdd_sites,
-      command = retrieve_target(target = "p3_sdd_harmonized_site_info", 
-                                id_df = a_AquaMatch_sdd_drive_ids,
-                                local_folder = "a_compile_sites/mid/", 
-                                google_email = siteSR_config$google_email, 
-                                file_type = "rds",
-                                date_stamp = "20240701") %>% 
-        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      command = {
+        a_check_dir_structure
+        retrieve_target(target = "p3_sdd_harmonized_site_info", 
+                        id_df = a_AquaMatch_sdd_drive_ids,
+                        local_folder = "a_compile_sites/mid/", 
+                        google_email = siteSR_config$google_email, 
+                        file_type = "rds",
+                        date_stamp = "20240701") %>% 
+          filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
+      }, 
       packages = c("tidyverse", "googledrive")
     ),
     ## TSS - Drive doesn't think there is a dated version available at this time (?)
     tar_target(
       name = a_AquaMatch_tss_sites,
-      command = retrieve_target(target = "p3_tss_harmonized_site_info", 
-                                id_df = a_AquaMatch_tss_drive_ids,
-                                local_folder = "a_compile_sites/mid/", 
-                                google_email = siteSR_config$google_email, 
-                                file_type = "rds") %>% 
-        filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier), 
+      command = {
+        a_check_dir_structure
+        retrieve_target(target = "p3_tss_harmonized_site_info", 
+                        id_df = a_AquaMatch_tss_drive_ids,
+                        local_folder = "a_compile_sites/mid/", 
+                        google_email = siteSR_config$google_email, 
+                        file_type = "rds") %>% 
+          filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
+      }, 
       packages = c("tidyverse", "googledrive")
     ),
     
