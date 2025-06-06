@@ -97,7 +97,7 @@ collate_csvs_from_drive <- function(file_type = NULL,
     dswe_subset <- files[grepl(paste0("_", dswe, "_"), files)]
     metadata <- files[grepl("metadata", files)]
     filtered_files <- c(dswe_subset, metadata)
-    # make sure there are files present files# make sure there are files present in this filter
+# make sure there are files present in this filter
     if (length(filtered_files) == 0) {
       stop("You have used a `dswe` argument that is unrecognized.\n
       Acceptable `dswe` arguments are 'DSWE1', 'DSWE1a', 'DSWE3'.",
