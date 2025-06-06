@@ -226,7 +226,7 @@ if (config::get(config = general_config)$compile_locations) {
     
     # save this as a .rds file in drive
     tar_target(
-      name = a_save_all_site_locs,
+      name = a_save_all_site_locs_drive,
       command = {
         export_single_target(target = a_all_site_locations,
                              drive_path = check_targets_drive,
@@ -236,6 +236,14 @@ if (config::get(config = general_config)$compile_locations) {
                              file_type = "rds")
       },
       packages = c("tidyverse", "googledrive"),
+    ),
+    
+    # save this as a .csv file locally for GEE run
+    tar_target(
+      name = a_save_all_site_locs_local,
+      command = a_all_site_locations %>% 
+        st_drop_geometry() %>% 
+        write_csv(., "a_compile_sites/out/a_all_site_locations.csv")
     ),
     
     # get the drive id info
