@@ -10,7 +10,7 @@ This repository is covered by the MIT use license. We request that all downstrea
 
 Proper configuration of the general configuration file (`config.yml`) is necessary for proper pipeline function. This repository is stored in the 'default' configuration which loads the existing station list, default remote sensing visibility, and GEE run. These settings can be altered in the `config.yml` file to re-run or alter any portion of the pipeline.
 
-We also use a configuration file (`gee_config.yml`) for the GEE run. If you are external of the ROSS team, you will need to update some entries in this configuration file and update the general_config argument in the \_targets.R script in order to successfully run the Pekel and Landsat portions of this workflow (targets groups b & c). If using the "default" setting for the general configuration file, the GEE configuration file can be ignored.
+We also use a configuration file (`gee_config.yml`) for the GEE run. If you are external to the ROSS team, you will need to update some entries in this configuration file and update the general_config argument in the \_targets.R script in order to successfully run the Pekel and Landsat portions of this workflow (targets groups b & c). If using the "default" setting for the general configuration file, the GEE configuration file can be ignored.
 
 ## Targets Architecture
 
