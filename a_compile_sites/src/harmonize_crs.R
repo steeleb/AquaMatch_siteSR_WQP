@@ -44,6 +44,7 @@ harmonize_crs <- function(sites) {
     # Assume WGS84
     "UNKWN", 4326,
     "Unknown", 4326,
+    NA, 4326,
     # Wake-Eniwetok 1960
     "WAKE", 37229,
     # World Geodetic System 1972
@@ -59,11 +60,13 @@ harmonize_crs <- function(sites) {
               by = "HorizontalCoordinateReferenceSystemDatumName") 
   
   # Check to see if there are any sites that have CRS not in the tribble above,
-  # if so, stop and message!
+  # if so, assume EPSG 4326, but provide warning
   if (nrow(filter(site_w_epsg, is.na(epsg))) > 0) {
-    stop("There is at least one CRS datum in the site list that is not included 
+    warning("There is at least one CRS datum in the site list that is not included 
           in the translate table. Add missing datum to the harmonize_crs script 
           and re-run the pipeline.")
+    site_w_epsg <- site_w_epsg %>% 
+      mutate(if_else(is.na(epsg), 4326, epsg))
   }
   
   # Transform to common CRS WGS84 so we can have a single sf object
@@ -80,10 +83,10 @@ harmonize_crs <- function(sites) {
   
   # Store harmonized Latitude and Longitude in site list
   new_coords <- site_sf_unified %>% st_coordinates()
-  site_sf_unified$WGS84_Longitude = new_coords[,1]
-  site_sf_unified$WGS84_Latitude = new_coords[,2]
+  site_sf_unified$WGS84_Longitude = round(new_coords[,1], 5)
+  site_sf_unified$WGS84_Latitude = round(new_coords[,2], 5)
   
   # Return sf object
   site_sf_unified
-
+  
 }

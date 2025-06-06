@@ -4,6 +4,10 @@
 
 tar_source(files = "6_siteSR_stack/src/")
 
+# Set up python virtual environment ---------------------------------------
+library(reticulate)
+tar_source("python/pySetup.R")
+
 
 # Define {targets} workflow -----------------------------------------------
 
@@ -142,7 +146,7 @@ if (config::get(config = general_config)$run_GEE) {
         # authorize Google
         drive_auth(email = p5_yml$google_email)
         # create the folder path as proj_folder and run_date
-        drive_folder = paste0(p5_yml$proj_parent_folder, "siteSR_v", p5_yml$run_date)
+        drive_folder <- paste0(p5_yml$proj_parent_folder, "siteSR_v", p5_yml$run_date)
         # get a list of files in the project file
         drive_ls(path = drive_folder) %>% 
           select(name, id)

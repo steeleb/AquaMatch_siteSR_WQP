@@ -13,27 +13,37 @@ is written in an .Rmd script, we recommend walking through this script manually,
 as the knit function often runs into issues and this script has a number of
 interactive steps.
 
+We have a user guide which describes all the steps in this (and the lakeSR)
+workflow which [is available
+here](https://aquasat.github.io/AquaMatch_lakeSR/index.html). We strongly
+reccommend reading through the user guide if you are using data that result from
+this pipeline.
+
+## Note
+
+Landsat remote sensing images used in analyses courtesy of the United States
+Geological Survey. Any use of trade, firm, or product names is for descriptive
+purposes only and does not imply endorsement by the U.S. Government.
+
 ## Pre-requisites
 
 siteSR_WQP relies on a configuration file (`config.yml`) to run specific
-profiles that determine what operations are being run. The file contains three
-configuration profiles: "default", "admin_update", and "use_stable".
+profiles that determine what operations are being run. The file contains two
+configuration profiles: "default" and "admin_update".
 
--   "default" runs the pipeline without using any publicly-stable versions of
-    datasets made with AquaMatch_harmonize_WQP. This requires that the
-    AquaMatch_harmonize_WQP pipeline has been run locally.
-
--   "use_stable" uses publicly-posted stable versions of datasets from
-    AquaMatch_harmonize_WQP and is intended for those who wish to modify choices
-    made in siteSR_WQP or for those who wish to have the complete pipeline on
-    their local device. This is the recommended setting for most users.
+-   "default" runs the pipeline using publicly-stable versions of datasets from
+    a previously run pipeline. It requires a Google email address to complete
+    the pipeline
 
 -   "admin_update" is intended for use by ROSSyndicate members when updating
-    siteSR datasets and create publicly-stable versions of the siteSR_WQP to be
+    siteSR datasets, creating publicly-stable versions of the siteSR_WQP to be
     stored in the AquaMatch_siteSR_WQP repository.
 
-All configurations will be reliant on the stable version of handoff coefficients
-calculated in AquaMatch_lakeSR.
+This pipeline does not apply handoff coefficients between Landsat missions,
+which are imperative for analyzing the data that overlap multiple sensors. See
+the [user guide section on
+handoffs](https://aquasat.github.io/AquaMatch_lakeSR/define-handoff.html) for
+additional guidance on this matter.
 
 Proper configuration of harmonize_repo_directory and lakeSR_repo_directory is
 imperative as the siteSR_WQP workflow references files inside
@@ -49,10 +59,10 @@ configuration will require that the harmonize pipeline has been run locally.
 ```{r package_installer, echo = F}
 package_installer <- function(x) {
   if (x %in% installed.packages()) {
-    print(paste0('{', x ,'} package is already installed.'))
+    print(paste0("{", x ,"} package is already installed."))
     } else {
       install.packages(x)
-      print(paste0('{', x ,'} package has been installed.'))
+      print(paste0("{", x ,"} package has been installed."))
     }
   }
 ```
@@ -61,24 +71,32 @@ List packages that need to be checked for install, and walk the function along
 them all.
 
 ```{r walk_package_installer, message = F}
-packages <- c('tidyverse',
-              'reticulate',
-              'targets',
-              'tarchetypes',
-              'yaml',
-              'nhdplusTools',
-              'polylabelr',
-              'sf')
+packages <- c("arrow",
+              "config",
+              "crew",
+              "nhdplusTools",
+              "polylabelr",
+              "reticulate",
+              "rmapshaper",
+              "sf", 
+              "tarchetypes",
+              "targets",
+              "tidyverse",
+              "xml2",
+              "yaml")
 
 lapply(packages, package_installer)
 ```
 
 ## Authenticate and initialize Earth Engine
 
-You will need to have [installed and initialized the
-`gcloud CLI`](https://cloud.google.com/sdk/docs/install) and have a [Google
-Earth Engine account](https://code.earthengine.google.com/register) prior to
-running this workflow. Some common troubleshooting solutions [can be found
+If you have used the default configuration, you will not need to follow these
+steps. If you have set the general configuration file (`config.yml`) arguments
+of `run_pekel` or \`run_GEE\` to TRUE, you will need to have [installed and
+initialized the `gcloud CLI`](https://cloud.google.com/sdk/docs/install) and
+have a [Google Earth Engine
+account](https://code.earthengine.google.com/register) prior to running this
+workflow. Some common troubleshooting solutions [can be found
 here]<https://github.com/rossyndicate/ROSS_RS_mini_tools/blob/main/helps/CommonIssues.md>).
 
 ### Authentication
@@ -88,7 +106,7 @@ the R file 'src/py/pySetup.R'. This will take a few minutes if you haven't yet
 run the python setup script while it creates a virtual environment.
 
 ```{r}
-source('src/py/pySetup.R')
+source("python/pySetup.R")
 ```
 
 ### Authenticate your instance of GEE
@@ -96,23 +114,17 @@ source('src/py/pySetup.R')
 ```{python}
 import ee
 
-ee.Authenticate(auth_mode = 'localhost')
+ee.Authenticate(auth_mode = "localhost")
 ```
-
-### Configuration
-
-We use a configuration file (`gee_config.yml`) for the GEE run, as well as a
-general configuration file (`config.yml`). If you are outside of the ROSS team,
-you will need to update some entries in the configuration file and update the
-settings for the `p0_siteSR_config` target in the `_targets.R` script in order
-to successfully run this workflow.
 
 ## Run the targets pipeline and output a network graph.
 
 ```{r run_targets, echo = F}
 library(targets)
 
-#tar_make()
+# for the purposes of this document, we comment out the following lines, as they may take a long time to run depending on configuration settings. 
 
-#tar_visnetwork()
+# tar_make()
+
+# tar_visnetwork()
 ```

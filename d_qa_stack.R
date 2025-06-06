@@ -168,6 +168,7 @@ if (config::get(config = general_config)$update_and_share) {
     )
     
   )
+  # collate site info/site id info here
   
 }
 

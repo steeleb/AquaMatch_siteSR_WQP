@@ -50,7 +50,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
       # if huc4 >= 1900, process differently, as nhdtools wbd is limited to CONUS
       
       # make sure the geopackage hasn't already been downloaded
-      if (!file.exists(file.path("4_compile_sites/nhd/",
+      if (!file.exists(file.path("a_compile_sites/nhd/",
                                  paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")))) {
         
         # but if it isn't, download it!
@@ -60,20 +60,20 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
         
         # url for the NHD Best Resolution for HUC4
         url = paste0("https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/HU4/GPKG/NHD_H_", huc4, "_HU4_GPKG.zip")
-        download.file(url, destfile = file.path("4_compile_sites/nhd/", 
+        download.file(url, destfile = file.path("a_compile_sites/nhd/", 
                                                 paste0(huc4, ".zip")))
         
-        unzip(file.path("4_compile_sites/nhd/", 
+        unzip(file.path("a_compile_sites/nhd/", 
                         paste0(huc4, ".zip")), 
-              exdir = "4_compile_sites/nhd/")
+              exdir = "a_compile_sites/nhd/")
         
         # remove zip
-        unlink(file.path("4_compile_sites/nhd/", 
+        unlink(file.path("a_compile_sites/nhd/", 
                          paste0(huc4, ".zip")))
       }
       
       # open the NHDWaterbody layer, coerce to a {sf} object
-      huc4_wbd <- st_read(file.path("4_compile_sites/nhd/",
+      huc4_wbd <- st_read(file.path("a_compile_sites/nhd/",
                                     paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")),
                           layer = "NHDWaterbody") %>% 
         # filter the waterbodies for ftypes of interest. 390 = lake/pond; 436 = res
@@ -280,14 +280,14 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
   error = function(e) {
     # if subset failed, note and go to next 
     message(paste0("HUC4 ", huc4, " was not able to be processed, 
-                     noting in '4_compile_sites/mid/huc4_wbd_no_process.txt'"))
-    if (!file.exists("4_compile_sites/mid/huc4_wbd_no_process.txt")) {
-      write_lines(huc4, file = "4_compile_sites/mid/huc4_wbd_no_process.txt")
+                     noting in 'a_compile_sites/mid/huc4_wbd_no_process.txt'"))
+    if (!file.exists("a_compile_sites/mid/huc4_wbd_no_process.txt")) {
+      write_lines(huc4, file = "a_compile_sites/mid/huc4_wbd_no_process.txt")
       return(NULL)
     } else {
-      text <- read_lines("4_compile_sites/mid/huc4_wbd_no_process.txt")
+      text <- read_lines("a_compile_sites/mid/huc4_wbd_no_process.txt")
       new_text <- c(text, huc4)
-      write_lines(new_text, "4_compile_sites/mid/huc4_wbd_no_process.txt")
+      write_lines(new_text, "a_compile_sites/mid/huc4_wbd_no_process.txt")
       return(NULL)
     }
   })

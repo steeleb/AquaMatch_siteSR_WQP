@@ -18,7 +18,7 @@
 #' function. Defaults to NULL.
 #' 
 #' @returns downloads .csvs from the specified folder name to the
-#' c_collate_Landsat_data/down/ folder. If file_type is set to default, all 
+#' `local_folder` folder. If file_type is set to default, all 
 #' files from the folder specified in the yml will be downloaded.
 #' 
 #' 

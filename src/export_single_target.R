@@ -15,8 +15,8 @@
 #' @param google_email A string containing the gmail address to use for
 #' Google Drive authentication.
 #' 
-#' @param feather Logical value. If TRUE, export the file as a feather file. If
-#' FALSE, then ".rds". Defaults to FALSE.
+#' @param file_type Indication of destination file type. Acceptable types include
+#' csv, feather, rds. Defaults to rds.
 #' 
 #' @param date_stamp character string to version target by
 #' 
@@ -24,10 +24,25 @@
 #' None. 
 #' 
 export_single_target <- function(target, drive_path, stable = FALSE, google_email,
-                                 date_stamp, feather = FALSE){
+                                 date_stamp, file_type = "rds"){
   
-  # Feather or RDS?
-  if(feather){extension <- ".feather"} else {extension <- ".rds"}
+  if (!file_type %in% c("feather", "rds", "csv")) {
+    stop("File type unrecognized. Acceptable arguments for `file_type` include feather, rds, csv.")
+  }
+  
+  # get file extension
+  if (file_type == "feather") {
+    extension <- ".feather"
+    write_function <- write_feather
+  } 
+  if (file_type == "rds") {
+    extension <- ".rds"
+    write_function <- write_rds
+  }
+  if (file_type == "csv") {
+    extension <- ".csv"
+    write_function <-  write_csv
+  }
   
   # Authorize using the google email provided
   drive_auth(google_email)
@@ -39,14 +54,10 @@ export_single_target <- function(target, drive_path, stable = FALSE, google_emai
   # to Google Drive
   file_local_path <- tempfile(fileext = extension)
   
-  # If feather == TRUE then .feather; else .rds
-  if (feather) {
-    write_feather(x = target,
-                  path = file_local_path)
-  } else {
-    write_rds(x = target,
-              file = file_local_path)
-  }
+  # save file using the write funciton
+  # do not specify argument for file path, it is diff between readr and arrow
+  write_function(x = target,
+                 file_local_path) 
   
   if (!is.null(date_stamp)) {
     target_string <- paste0(target_string, "_v", date_stamp)
