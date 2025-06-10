@@ -147,14 +147,15 @@ if (config::get(config = general_config)$compile_locations) {
       packages = c("tidyverse", "googledrive")
     ),
     tar_target(
-      name = a_AquaMatch_doc_sites {
+      name = a_AquaMatch_doc_sites,
+      command = {
         a_check_dir_structure
-        command = retrieve_target(target = "p3_doc_harmonized_site_info", 
-                                  id_df = a_AquaMatch_doc_drive_ids,
-                                  local_folder = "a_compile_sites/mid/", 
-                                  google_email = siteSR_config$google_email, 
-                                  file_type = "rds",
-                                  date_stamp = "20240701") %>% 
+        retrieve_target(target = "p3_doc_harmonized_site_info", 
+                        id_df = a_AquaMatch_doc_drive_ids,
+                        local_folder = "a_compile_sites/mid/", 
+                        google_email = siteSR_config$google_email, 
+                        file_type = "rds",
+                        date_stamp = "20240701") %>% 
           filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
       },
       packages = c("tidyverse", "googledrive")
@@ -173,7 +174,7 @@ if (config::get(config = general_config)$compile_locations) {
       }, 
       packages = c("tidyverse", "googledrive")
     ),
-    ## TSS - Drive doesn't think there is a dated version available at this time (?)
+    ## TSS 
     tar_target(
       name = a_AquaMatch_tss_sites,
       command = {
@@ -182,7 +183,8 @@ if (config::get(config = general_config)$compile_locations) {
                         id_df = a_AquaMatch_tss_drive_ids,
                         local_folder = "a_compile_sites/mid/", 
                         google_email = siteSR_config$google_email, 
-                        file_type = "rds") %>% 
+                        file_type = "rds",
+                        date_stamp = "20250430") %>% 
           filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
       }, 
       packages = c("tidyverse", "googledrive")
@@ -344,11 +346,11 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         a_check_dir_structure
         # join the waterbody metadata data together
-        waterbody_info <- map(a_add_NHD_waterbody_info,
-                              function(l) {
-                                # get the first object of the list item (nhd info with waterbody info)
-                                l[1]
-                              }) %>%
+        waterbody_info <- a_add_NHD_waterbody_info %>% 
+          # remove null elements (HUC4/grouped sites without info)
+          compact() %>% 
+          # get the first object of the list item (nhd info with waterbody info)        
+          map(~ {.x[[1]]}) %>%
           bind_rows() 
         # and the flowine data
         flowline_info <- map(a_add_NHD_flowline_info,

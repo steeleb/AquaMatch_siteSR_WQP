@@ -165,7 +165,6 @@ if (config::get(config = general_config)$run_pekel) {
       name = b_run_pekel,
       command = {
         b_sites_for_pekel
-        b_yml
         b_pekel_script
         run_pekel_per_pathrow(WRS_pathrow = b_WRS_pathrows)
       },

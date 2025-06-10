@@ -22,7 +22,7 @@ def csv_to_eeFeat(df, proj, chunk, chunk_size):
     features = []
     # Calculate start and end indices for the current chunk
     range_min = chunk_size * chunk
-    range_max = min(chunk_size * (chunk + 1), len(df))
+    range_max = min(chunk_size * (chunk + 1), len(df)) + range_min
     
     for i in range(range_min, range_max):
         try:
@@ -70,7 +70,7 @@ def maximum_no_of_tasks(MaxNActive, waitingPeriod):
 
 
 # get locations and yml from data folder
-yml = pd.read_csv('5_determine_RS_visibility/run/yml.csv')
+yml = pd.read_csv('b_determine_RS_visibility/run/yml.csv')
 
 eeproj = yml['ee_proj'][0]
 #initialize GEE
@@ -90,12 +90,12 @@ extent = (yml['extent'][0]
   .split('+'))
   
 # get current pathrow
-with open('5_determine_RS_visibility/run/current_pathrow.txt', 'r') as file:
+with open('b_determine_RS_visibility/run/current_pathrow.txt', 'r') as file:
   pathrows = file.read()
 
 # read locations and filtere for this pathrow
-locations = (pd.read_csv('5_determine_RS_visibility/run/locs_with_wrs_for_pekel.csv', 
-                      dtype = ({"id": np.int32, 
+locations = (pd.read_csv('b_determine_RS_visibility/run/locs_with_wrs_for_pekel.csv', 
+                      dtype = ({"id": str, 
                                 "Latitude": np.float64, 
                                 "Longitude": np.float64, 
                                 "WRSPR": str})))
