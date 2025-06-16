@@ -288,7 +288,7 @@ if (config::get(config = general_config)$run_pekel) {
                                 local_folder = "b_determine_RS_visibility/out/",
                                 google_email = siteSR_config$google_email,
                                 date_stamp = siteSR_config$pekel_gee_version,
-                                file_type = ".rds"),
+                                file_type = "rds"),
       packages = c("tidyverse", "googledrive")
     ),
     
@@ -307,7 +307,7 @@ if (config::get(config = general_config)$run_pekel) {
                                 local_folder = "b_determine_RS_visibility/out/",
                                 google_email = siteSR_config$google_email,
                                 date_stamp = siteSR_config$pekel_gee_version,
-                                file_type = ".rds"),
+                                file_type = "rds"),
       packages = c("tidyverse", "googledrive")
     )
     

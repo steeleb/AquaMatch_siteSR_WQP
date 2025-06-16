@@ -276,22 +276,24 @@ if (config::get(config = general_config)$compile_locations) {
     # Nearly all WQP sites have a HUC8 reported in the `HUCEightDigitCode` field, 
     # but a few need it assigned, as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
-    # 0 = HUC8 reported in WQP site information
-    # 1 = HUC8 determined from nhdplusTools (from NHD)
-    # 2 = HUC8 unable to be determined for site location
+    # 0 = HUC8 reported in WQP site information, matches nhdplusTools assignment
+    # 1 = HUC8 determined from nhdplusTools (from NHD), WQP/AM site info was blank
+    # 2 = HUC8 mismatch between WQP/AM assignment and nhdplusTools assignment, 
+    # using nhdplusTools assignment
+    # 3 = HUC8 unable to be determined, HUC4 assigned
+    # 4 = HUC8 unable to be determined for site location
     tar_target(
       name = a_sites_add_HUC8,
       command = {
-        need_HUC8 <- a_grouped_sites %>%
-          filter(is.na(HUCEightDigitCode)) %>%
-          # default the flag to 1 and reassign if HUC can not be added
-          mutate(flag_HUC8 = 1)
-        assigned_HUC8 <- add_HUC8_to_sites(sites_without_HUC = need_HUC8)
-        a_grouped_sites %>%
-          filter(!is.na(HUCEightDigitCode)) %>%
-          mutate(flag_HUC8 = 0) %>%
-          bind_rows(assigned_HUC8) %>%
-          mutate(flag_HUC8 = if_else(is.na(HUCEightDigitCode), 2, flag_HUC8))
+        assigned <- add_HUC8_to_sites(sites = a_grouped_sites)
+        # create flag for huc assignment based on HUCEightDigitCode and assigned_HUC
+        assigned %>% 
+          mutate(flag_HUC8 = case_when(HUCEightDigitCode == assigned_HUC ~ 0,
+                                       is.na(HUCEightDigitCode) & !is.na(assigned_HUC) ~ 1,
+                                       HUCEightDigitCode != assigned_HUC ~ 2, 
+                                       nchar(assigned_HUC) == 4 ~ 3,
+                                       is.na(HUCEightDigitCode) & is.na(assigned_HUC) ~ 4,
+                                       .default = NA_real_))
       },
       pattern = map(a_grouped_sites),
       iteration = "list",
@@ -306,13 +308,13 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         dt <- map(a_sites_add_HUC8, as.data.table) %>% 
           rbindlist() 
-        unique(str_sub(dt[!is.na(HUCEightDigitCode), HUCEightDigitCode], 1, 4))
+        unique(str_sub(dt[!is.na(assigned_HUC), assigned_HUC], 1, 4))
       },
       packages = c("data.table", "tidyverse")
     ),
     
     # Get the waterbodies associated with each lake/reservoir site by HUC4, 
-    # leave these in a list for other branching funcitons
+    # leave these in a list for other branching functions
     tar_target(
       name = a_add_NHD_waterbody_info,
       command = {
@@ -489,7 +491,7 @@ if (config::get(config = general_config)$compile_locations) {
                                 local_folder = "a_compile_sites/out/", 
                                 google_email = siteSR_config$google_email,
                                 date_stamp = paste0("v", siteSR_config$collated_site_version),
-                                file_type = ".rds"),
+                                file_type = "rds"),
       packages = c("tidyverse", "googledrive")
     )
     

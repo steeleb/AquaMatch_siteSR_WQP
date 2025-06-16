@@ -19,9 +19,12 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
   message(paste0("Assigning NHD waterbodies to sites within ", huc4))
   
   tryCatch({
+    
     # filter sites for those in a single huc
     sf_subset <- sites_with_huc %>%
-      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) 
+      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4, 
+             # and to confirm that the site has a flag_HUC8 of 0/1
+             flag_HUC8 %in% c(0,1)) 
     
     # check to make sure there are obs in this huc/group combo, if not, go to next.
     if (nrow(sf_subset) > 0) {
@@ -36,7 +39,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
         # get the waterbodies in the huc
         huc4_wbd <- get_waterbodies(AOI = huc4_aoi) %>%
           # filter to match wbd type of lakeSR
-          filter(ftype %in% c("Reservoir", "LakePond")) %>%
+          filter(ftype %in% c("Reservoir", "LakePond", "Estuary")) %>%
           select(wb_nhd_id = comid, 
                  wb_gnis_id = gnis_id, 
                  wb_gnis_name = gnis_name, 
@@ -78,8 +81,9 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
         huc4_wbd <- st_read(file.path("a_compile_sites/nhd/",
                                       paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")),
                             layer = "NHDWaterbody") %>% 
-          # filter the waterbodies for ftypes of interest. 390 = lake/pond; 436 = res
-          filter(ftype %in% c(390, 436)) %>% 
+          # filter the waterbodies for ftypes of interest. 390 = lake/pond; 
+          # 436 = res, 493 = estuary
+          filter(ftype %in% c(390, 436, 493)) %>% 
           select(wb_nhd_id = permanent_identifier, 
                  wb_gnis_id = gnis_id, 
                  wb_gnis_name = gnis_name, 
@@ -174,7 +178,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
             select(-wbd_id) %>%
             left_join(huc4_lake_points, .) %>%
             filter(!is.na(wb_nhd_id)) %>%
-            # add distance to waterbody for rbind later
+            # add distance to waterbody for rbind later, since these are WITHIN a waterbody
             mutate(dist_to_wb = NA)
           
           # get coordinates to calculate UTM zone. This is an adaptation of code from
