@@ -19,13 +19,6 @@ warning = function(w) {
   }
 },
 error = function(e) {
-  # if there is an error, restart R (this won't drop any loaded packages, but
-  # will reset any reticulate settings)
-  .rs.restartR()
-  use_condaenv(file.path(getwd(), "env/"))
-  print("conda environment activated")
-},
-error = function(e) {
   # if the error is "Unable to locate conda environment"
   if (grepl("Unable to locate conda environment", conditionMessage(e))) {
     # install miniconda if necessary

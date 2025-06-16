@@ -346,35 +346,38 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         a_check_dir_structure
         # join the waterbody metadata data together
-        waterbody_info <- a_add_NHD_waterbody_info %>% 
-          # remove null elements (HUC4/grouped sites without info)
-          compact() %>% 
-          # get the first object of the list item (nhd info with waterbody info)        
-          map(~ {.x[[1]]}) %>%
+        waterbody_info <- map(a_add_NHD_waterbody_info,
+              function(w) {
+                w[1]}
+              ) %>%
           bind_rows() 
         # and the flowine data
         flowline_info <- map(a_add_NHD_flowline_info,
-                             function(l) {
+                             function(f) {
                                # get the first object of the list item (nhd info with waterbody info)
-                               l[1]
+                               f[1]
                              }) %>%
           bind_rows()
+        georef_sites <- a_sites_add_HUC8 %>% 
+          bind_rows() %>% 
+          st_drop_geometry() %>% 
+          # remove the targets grouping column
+          select(-tar_group)
         collated_sites <- full_join(waterbody_info,
                                     flowline_info) %>%
           # add in spatial info from above
-          full_join(a_sites_add_HUC8, .) %>%
-          st_drop_geometry()
+          full_join(georef_sites, .)
         # get the intersections data to add to this
         waterbody_intersections <- map(a_add_NHD_waterbody_info,
-                                       function(l) {
+                                       function(w) {
                                          # get the second object of the list item (intersection info)
-                                         l[2]
+                                         w[2]
                                        }) %>%
           bind_rows()
         flowline_intersections <- map(a_add_NHD_flowline_info,
-                                      function(l) {
+                                      function(f) {
                                         # get the first object of the list item (intersection info)
-                                        l[2]
+                                        f[2]
                                       }) %>%
           bind_rows()
         
