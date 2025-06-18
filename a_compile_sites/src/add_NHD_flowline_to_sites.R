@@ -24,7 +24,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     
     # filter sites for those in a single huc4
     sf_subset <- sites_with_huc %>%
-      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4) 
+      filter(str_sub(assigned_HUC, 1, 4) == huc4) 
     
     # check to make sure there are obs in this huc/group combo, if not, go to next.
     if (nrow(sf_subset) > 0) {

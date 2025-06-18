@@ -16,6 +16,7 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         directories <- c("a_compile_sites/mid/",
                          "a_compile_sites/out/",
+                         "a_compile_sites/out/failed_HUC/",
                          "a_compile_sites/nhd/")
         walk(directories, function(dir) {
           if(!dir.exists(dir)){
@@ -207,7 +208,7 @@ if (config::get(config = general_config)$compile_locations) {
           unique() %>% 
           rowid_to_column("siteSR_id") %>% 
           mutate(siteSR_id = paste0("AM_", siteSR_id),
-                 source = "AM")
+                 source = "WQP")
       }
     ),
     
@@ -263,36 +264,55 @@ if (config::get(config = general_config)$compile_locations) {
     
     # Associate location with NHD waterbody and flowline ------------------------
     
-    # we're going to group the sites by their source for processing here
+    # we're going to group the sites by their data source and org id, mostly for 
+    # the HUC assignment step to reduce long processing times per branch
     tar_target(
       name = a_grouped_sites,
       command = a_all_site_locations %>% 
-        group_by(source) %>% 
+        group_by(source, org_id) %>% 
         tar_group(),
       iteration = "group",
       packages = c("tidyverse", "sf", "targets")
     ),
     
     # Nearly all WQP sites have a HUC8 reported in the `HUCEightDigitCode` field, 
-    # but a few need it assigned, as do all of the NWIS sites
+    # but a few need it assigned (or are assigned incorrectly), as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
     # 0 = HUC8 reported in WQP site information, matches nhdplusTools assignment
     # 1 = HUC8 determined from nhdplusTools (from NHD), WQP/AM site info was blank
     # 2 = HUC8 mismatch between WQP/AM assignment and nhdplusTools assignment, 
     # using nhdplusTools assignment
-    # 3 = HUC8 unable to be determined, HUC4 assigned
-    # 4 = HUC8 unable to be determined for site location
+    # 3 = HUC8 unable to be determined for site location
+    
+    # first step is to download the staged wbd dataset, since pinging the NHD API
+    # is not sustainable, and repeating this 1 million times takes quite a bit of
+    # time.
+    tar_target(
+      name = a_wbd_gdb,
+      command = {
+        if (!dir.exists("a_compile_sites/nhd/WBD_National_GDB/")) {
+          download_wbd(outdir = "a_compile_sites/nhd/")
+          unzip("a_compile_sites/nhd/WBD_National_GDB.zip", 
+                exdir = "a_compile_sites/nhd/WBD_National_GDB/")
+          unlink("a_compile_sites/nhd/WBD_National_GDB.zip")
+        }
+        read_sf("a_compile_sites/nhd/WBD_National_GDB/WBD_National_GDB.gdb", 
+                layer = "WBDHU8") %>% 
+          st_make_valid()
+      },
+      packages = c("nhdplusTools", "sf")
+    ),
+    
     tar_target(
       name = a_sites_add_HUC8,
       command = {
-        assigned <- add_HUC8_to_sites(sites = a_grouped_sites)
+        assigned <- add_HUC8_to_sites(sites = a_grouped_sites, hucs = a_wbd_gdb)
         # create flag for huc assignment based on HUCEightDigitCode and assigned_HUC
         assigned %>% 
           mutate(flag_HUC8 = case_when(HUCEightDigitCode == assigned_HUC ~ 0,
                                        is.na(HUCEightDigitCode) & !is.na(assigned_HUC) ~ 1,
                                        HUCEightDigitCode != assigned_HUC ~ 2, 
-                                       nchar(assigned_HUC) == 4 ~ 3,
-                                       is.na(HUCEightDigitCode) & is.na(assigned_HUC) ~ 4,
+                                       is.na(HUCEightDigitCode) & is.na(assigned_HUC) ~ 3,
                                        .default = NA_real_))
       },
       pattern = map(a_grouped_sites),
@@ -314,7 +334,8 @@ if (config::get(config = general_config)$compile_locations) {
     ),
     
     # Get the waterbodies associated with each lake/reservoir site by HUC4, 
-    # leave these in a list for other branching functions
+    # leave these in a list for other branching functions - my hope is that only
+    # changed branches will be re-run and not all of the data every time.
     tar_target(
       name = a_add_NHD_waterbody_info,
       command = {

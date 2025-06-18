@@ -22,7 +22,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
     
     # filter sites for those in a single huc
     sf_subset <- sites_with_huc %>%
-      filter(str_sub(HUCEightDigitCode, 1, 4) == huc4, 
+      filter(str_sub(assigned_HUC, 1, 4) == huc4, 
              # and to confirm that the site has a flag_HUC8 of 0/1
              flag_HUC8 %in% c(0,1)) 
     
