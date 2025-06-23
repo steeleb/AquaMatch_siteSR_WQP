@@ -1,4 +1,4 @@
-# AquaMatch_siteSR_WQP
+# AquaMatch_siteSR
 
 The third repository in the AquaMatch constellation. This repository determines remote sensing visibility and acquires surface reflectance data for RS-visible sites from the Water Quality Portal harmonized datasets.
 

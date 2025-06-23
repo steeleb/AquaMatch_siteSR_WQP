@@ -439,7 +439,7 @@ if (config::get(config = general_config)$compile_locations) {
                                                          dist_to_shore > (as.numeric(b_yml$site_buffer) + 100) &
                                                            flag_wb == 0 ~ 0))
         write_csv(collated_sites,
-                  "a_compile_sites/out/collated_WQP_sites_with_metadata.csv")
+                  paste0("a_compile_sites/out/collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
         collated_sites
       },
     ),
