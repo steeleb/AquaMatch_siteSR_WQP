@@ -479,6 +479,7 @@ if (config::get(config = general_config)$compile_locations) {
   a_compile_sites <- list(
     
     # load in distinct sites did file and retrieve target
+    # locs w/o NHD attribution
     tar_file_read(
       name = a_all_site_locs_Drive_id,
       command = "a_compile_sites/out/all_site_locations_drive_id.csv",
@@ -489,7 +490,7 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_all_site_locations,
       command = retrieve_target(target = "a_all_site_locations",
-                                id_df = a_hamonized_sites_Drive_id, 
+                                id_df = a_all_site_locs_Drive_id, 
                                 local_folder = "a_compile_sites/out/", 
                                 google_email = siteSR_config$google_email,
                                 date_stamp = paste0("v", siteSR_config$collated_site_version),
@@ -497,7 +498,7 @@ if (config::get(config = general_config)$compile_locations) {
       packages = c("tidyverse", "googledrive")
     ),
     
-    # load in the collated sites did file and retrieve target
+    # load in the sites **with** NHD info.
     tar_file_read(
       name = a_sites_with_NHD_Drive_id,
       command = "a_compile_sites/out/sites_with_NHD_drive_id.csv",

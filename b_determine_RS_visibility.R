@@ -1,20 +1,21 @@
 # Targets list to assess site remote sensing visibility
 
-# Set up python virtual environment ---------------------------------------
-library(reticulate)
-tar_source("python/pySetup.R")
-
 # Source targets functions ------------------------------------------------
 
 tar_source(files = "b_determine_RS_visibility/src/")
 
-# Point to the GEE configuration file -------------------------------------
-
-yaml_file <- "gee_config.yml"
-
 # Define {targets} workflow -----------------------------------------------
 
 if (config::get(config = general_config)$run_pekel) {
+  
+  # Set up python virtual environment ---------------------------------------
+  
+  tar_source("python/pySetup.R")
+  
+  # Point to the GEE configuration file -------------------------------------
+  
+  yaml_file <- "gee_config.yml"
+  
   
   # target objects in workflow
   b_determine_RS_visibility <- list(
@@ -287,7 +288,7 @@ if (config::get(config = general_config)$run_pekel) {
                                 id_df = b_yml_Drive_id,
                                 local_folder = "b_determine_RS_visibility/out/",
                                 google_email = siteSR_config$google_email,
-                                date_stamp = siteSR_config$pekel_gee_version,
+                                date_stamp = paste0("v", siteSR_config$pekel_gee_version),
                                 file_type = "rds"),
       packages = c("tidyverse", "googledrive")
     ),
@@ -306,7 +307,7 @@ if (config::get(config = general_config)$run_pekel) {
                                 id_df = b_visible_site_Drive_id,
                                 local_folder = "b_determine_RS_visibility/out/",
                                 google_email = siteSR_config$google_email,
-                                date_stamp = siteSR_config$pekel_gee_version,
+                                date_stamp = paste0("v", siteSR_config$pekel_gee_version),
                                 file_type = "rds"),
       packages = c("tidyverse", "googledrive")
     )
