@@ -81,7 +81,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         huc4_fl <- st_read(file.path("a_compile_sites/nhd/",
                                      paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")),
                            layer = "NHDFlowline") %>% 
-          # only grab stream/river and artificail path
+          # only grab stream/river and artificial path
           # 556 = coastline, 428 = pipeline, 336 = canal/ditch
           # 460 = stream/river, 468 = drainageway, 558 = artificial path (in waterbody),
           # 420 = underground conduit, 334 = connector
