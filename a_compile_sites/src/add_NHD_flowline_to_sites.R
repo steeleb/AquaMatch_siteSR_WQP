@@ -181,7 +181,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
                                   .))) %>%
           select(-fl_id)
         
-        #join the matched and matched together, flag fl assignment
+        # join the matched and matched together, flag fl assignment
         assignment <- matched %>%
           # 0 = point <= 100m proximate to flowline (nhd_id info, distance < 100)
           # 1 = point between 100m and GEE buffer distance proximate to flowline (nhd_id info and distance info)
