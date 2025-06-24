@@ -248,7 +248,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
           # add for rbind ease
           mutate(dist_to_shore = NA)
         
-        #join the matched and unmatched together, flag wbd assignment
+        # join the matched and unmatched together, flag wbd assignment
         assignment <- rbind(matched, unmatched) %>%
           # 0 = point inside waterbody (nhd_id info, but no distance)
           # 1 = point <= GEE site buffer (default 200)
