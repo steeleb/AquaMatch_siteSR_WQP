@@ -250,9 +250,9 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
         
         # join the matched and unmatched together, flag wbd assignment
         assignment <- rbind(matched, unmatched) %>%
-          # 0 = point inside waterbody (nhd_id info, but no distance)
-          # 1 = point <= GEE site buffer (default 200)
-          # 2 = point <= 500m > GEE buffer,  proximate to waterbody, waterbody info is from
+          # 0 = point inside waterbody (nhd_id info, but no distance_to_wb)
+          # 1 = point <= GEE site buffer (default 200) and not inside waterbody
+          # 2 = point > GEE buffer from to waterbody, waterbody info is from
           # closest waterbody. (nhd_id info and distance info)
           # 3 = point unable to be assigned to waterbody (no nhd_id, but
           # distance info)
