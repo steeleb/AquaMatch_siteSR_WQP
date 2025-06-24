@@ -10,8 +10,9 @@
 #' @param huc4 4-digit character string to filter sites by
 #' @param GEE_buffer numeric value of buffer for GEE site extraction in meters
 #' 
-#' @returns a list containing dataframe of the spatial feature information with flowline and 
-#' distance to flowline assignment as well as a dataframe of the number of intersections
+#' @returns a list containing dataframe of the spatial feature information with 
+#' flowline and distance to flowline assignment as well as a dataframe of the 
+#' number of intersections
 #' 
 #' 
 add_NHD_flowline_to_sites <- function(sites_with_huc, 
@@ -172,9 +173,10 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
         
         matched <- matched %>%
           mutate(dist_to_fl = as.numeric(round(st_distance(matched, huc4_matched, by_element = TRUE)))) %>%
-          # if the distance to the flowline is > 500m, recode all the flowline info 
-          # ** if ** the location type is river/stream, otherwise the distance can 
-          # stay for lake/res, since the distance could be large for large waterbodies
+          # for river/stream sites: if the distance to the flowline is > 500m, 
+          # recode all the flowline info 
+          # for lake/res sites: the distance can be retained, since the distance 
+          # could be large for large waterbodies
           mutate(across(all_of(c("fl_nhd_id", "fl_gnis_id", "fl_gnis_name", "fl_stream_order", "fl_fcode")),
                         ~ if_else(dist_to_fl > 500 & grepl("river|stream", MonitoringLocationTypeName, ignore.case = T),
                                   NA,
