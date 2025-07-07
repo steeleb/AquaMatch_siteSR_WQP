@@ -423,7 +423,7 @@ if (config::get(config = general_config)$compile_locations) {
                                                        flag_wb == 0 ~ 1,
                                                      dist_to_shore > (as.numeric(b_yml$site_buffer) + 30) &
                                                        flag_wb == 0 ~ 0),
-                 flag_thermal_TM_shoreline =  case_when(flag_wb != 0 ~ NA,
+                 flag_thermal_MSS_shoreline = case_when(flag_wb != 0 ~ NA,
                                                         dist_to_shore <= (as.numeric(b_yml$site_buffer) + 120) &
                                                           flag_wb == 0 ~ 1,
                                                         dist_to_shore > (as.numeric(b_yml$site_buffer) + 120) &
@@ -439,7 +439,7 @@ if (config::get(config = general_config)$compile_locations) {
                                                          dist_to_shore > (as.numeric(b_yml$site_buffer) + 100) &
                                                            flag_wb == 0 ~ 0))
         write_csv(collated_sites,
-                  paste0("a_compile_sites/out/collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
+                  paste0("a_compile_sites/out/lakeSR_collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
         collated_sites
       },
     ),

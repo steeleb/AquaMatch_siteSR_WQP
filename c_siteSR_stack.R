@@ -214,15 +214,24 @@ if (config::get(config = general_config)$run_GEE) {
       packages = c("data.table", "tidyverse", "arrow")
     ),
     
+    # make target of first two digits of PR - LS7 is too large to only subset
+    # by mission group and dswe, so apply to all missions.
+    tar_target(
+      name = c_WRS_prefix,
+      command = unique(str_sub(b_WRS_pathrows, 1, 2))
+    ),
+    
     tar_target(
       name = c_make_collated_point_files,
       command = collate_csvs_from_drive(file_type = c_mission_groups,
                                         yml = b_yml,
+                                        wrs_prefix = c_WRS_prefix,
                                         dswe = c_dswe_types,
                                         separate_missions = TRUE,
                                         depends = c_download_files),
       packages = c("data.table", "tidyverse", "arrow"),
-      pattern = cross(c_mission_groups, c_dswe_types)
+      pattern = cross(c_mission_groups, c_dswe_types, c_WRS_prefix),
+      deployment = "main"
     ),
     
     # Save collated files to Drive, create csv with ids -----------------------

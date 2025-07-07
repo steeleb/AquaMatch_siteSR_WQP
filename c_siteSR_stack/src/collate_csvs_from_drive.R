@@ -97,7 +97,7 @@ collate_csvs_from_drive <- function(file_type = NULL,
     dswe_subset <- files[grepl(paste0("_", dswe, "_"), files)]
     metadata <- files[grepl("metadata", files)]
     filtered_files <- c(dswe_subset, metadata)
-# make sure there are files present in this filter
+    # make sure there are files present in this filter
     if (length(filtered_files) == 0) {
       stop("You have used a `dswe` argument that is unrecognized.\n
       Acceptable `dswe` arguments are 'DSWE1', 'DSWE1a', 'DSWE3'.",
@@ -118,7 +118,7 @@ collate_csvs_from_drive <- function(file_type = NULL,
     # rename to match workflow of non-subset files
     files <- dswe_subset
   }
-
+  
   if (!is.null(WRS_prefix)) {
     files <- files[grepl(paste0("_", WRS_prefix), files)]
   }
@@ -151,21 +151,20 @@ collate_csvs_from_drive <- function(file_type = NULL,
               walk(\(m) {
                 m_collated <- subset_mg %>% 
                   map(\(mg) tryCatch({
-                    fread(mg) %>% 
-                      filter(grepl(m, `system:index`))
+                    fread(mg)[grepl(m, `system:index`)]
                   },
                   error = function(e) {
                     NULL
                   })) %>% 
-                  bind_rows()
+                  rbindlist(., use.names = TRUE, fill = TRUE)
                 
                 # create file path
                 fp <- file.path(to_directory,
-                                paste0(yaml$proj, 
+                                paste0(yml$proj, 
                                        "_collated_metadata_",
                                        m,
                                        "_",
-                                       yaml$run_date, 
+                                       yml$run_date, 
                                        ".feather"))
                 
                 write_feather(m_collated, 
@@ -188,15 +187,15 @@ collate_csvs_from_drive <- function(file_type = NULL,
               error = function(e) {
                 return(NULL)
               })) %>% 
-              bind_rows()
+              rbindlist(., use.names = TRUE, fill = TRUE)
             
             write_feather(data_mg, 
                           file.path(to_directory,
-                                    paste0(yaml$proj, 
+                                    paste0(yml$proj, 
                                            "_collated_metadata_",
                                            mg, 
                                            "_",
-                                           yaml$run_date, 
+                                           yml$run_date, 
                                            ".feather")),
                           compression = "lz4")
             
@@ -242,43 +241,40 @@ collate_csvs_from_drive <- function(file_type = NULL,
                 walk(\(m) {
                   m_collated <- subset_mg %>% 
                     map(\(s) tryCatch({
-                      df <- fread(s) %>% 
-                        filter(grepl(m, `system:index`))
-                      filename = basename(s)
+                      df <- fread(s)[grepl(m, `system:index`)]
+                      filename <- basename(s)
                       # get column names that need to be 
                       # coerced to numeric (all but index)
                       df_names <- names(df)[2:length(names(df))]
                       # coerce columns to numeric and add
                       # source/file name
-                      df %>% 
-                        mutate(across(all_of(df_names),
-                                      ~ as.numeric(.)),
-                               source = filename)
+                      df[, (df_names) := lapply(.SD, as.numeric), .SDcols = df_names]
+                      df[, source := filename]
                     },
                     error = function(e) { 
                       NULL 
                     } 
                     ))
                 }) %>% 
-                bind_rows()
+                rbindlist(., use.names = TRUE, fill = TRUE)
               
               # check for dswe subset, name accordingly
               fp <- if_else(!is.null(dswe),
                             file.path(to_directory,
-                                      paste0(yaml$proj, 
+                                      paste0(yml$proj, 
                                              "_collated_sites_",
                                              dswe,
                                              "_",
                                              m,
                                              "_",
-                                             yaml$run_date, 
+                                             yml$run_date, 
                                              ".feather")),
                             file.path(to_directory,
-                                      paste0(yaml$proj, 
+                                      paste0(yml$proj, 
                                              "_collated_sites_",
                                              m,
                                              "_",
-                                             yaml$run_date, 
+                                             yml$run_date, 
                                              ".feather")))
               
               write_feather(m_collated,
@@ -296,39 +292,37 @@ collate_csvs_from_drive <- function(file_type = NULL,
               mg_collated <- subset_mg %>% 
                 map(\(s) tryCatch({
                   df <- fread(s) 
-                  filename = basename(s)
+                  filename <- basename(s)
                   # get column names that need to be 
                   # coerced to numeric (all but index)
                   df_names <- names(df)[2:length(names(df))]
                   # coerce columns to numeric and add
                   # source/file name
-                  df %>% 
-                    mutate(across(all_of(df_names),
-                                  ~ as.numeric(.)),
-                           source = filename)
+                  df[, (df_names) := lapply(.SD, as.numeric), .SDcols = df_names]
+                  df[, source := filename]
                 },
                 error = function(e) { 
                   stop("There was an error when collating by mission-group.") 
                 })) %>% 
-                bind_rows()
+                rbindlist(., use.names = TRUE, fill = TRUE)
               
               # check for dswe subset, name accordingly
               fp <- if_else(!is.null(dswe),
                             file.path(to_directory,
-                                      paste0(yaml$proj, 
+                                      paste0(yml$proj, 
                                              "_collated_sites_",
                                              dswe,
                                              "_",
                                              mg,
                                              "_",
-                                             yaml$run_date, 
+                                             yml$run_date, 
                                              ".feather")),
                             file.path(to_directory,
-                                      paste0(yaml$proj, 
+                                      paste0(yml$proj, 
                                              "_collated_sites_",
                                              mg,
                                              "_",
-                                             yaml$run_date, 
+                                             yml$run_date, 
                                              ".feather")))
               
               write_feather(mg_collated,
@@ -342,42 +336,39 @@ collate_csvs_from_drive <- function(file_type = NULL,
             
             data_mg <- sites %>% 
               map(\(s) tryCatch({
-                df <- fread(s) %>% 
-                  filter(grepl(m, `system:index`))
-                filename = basename(s)
+                df <- fread(s)[grepl(m, `system:index`)]
+                filename <- basename(s)
                 # get column names that need to be 
                 # coerced to numeric (all but index)
                 df_names <- names(df)[2:length(names(df))]
                 # coerce columns to numeric and add
                 # source/file name
-                df %>% 
-                  mutate(across(all_of(df_names),
-                                ~ as.numeric(.)),
-                         source = filename)
+                df[, (df_names) := lapply(.SD, as.numeric), .SDcols = df_names]
+                df[, source := filename]
               },
               error = function(e) {
                 NULL
               }
               )) %>% 
-              bind_rows()
+              rbindlist(., use.names = TRUE, fill = TRUE)
             
             # check for dswe subset, name accordingly
             fp <- if_else(!is.null(dswe),
                           file.path(to_directory,
-                                    paste0(yaml$proj, 
+                                    paste0(yml$proj, 
                                            "_collated_sites_",
                                            dswe,
                                            "_",
                                            mg, 
                                            "_",
-                                           yaml$run_date, 
+                                           yml$run_date, 
                                            ".feather")),
                           file.path(to_directory,
-                                    paste0(yaml$proj, 
+                                    paste0(yml$proj, 
                                            "_collated_sites_",
                                            mg, 
                                            "_",
-                                           yaml$run_date, 
+                                           yml$run_date, 
                                            ".feather")))
             write_feather(data_mg,
                           fp,
@@ -413,36 +404,33 @@ collate_csvs_from_drive <- function(file_type = NULL,
               m_collated <- subset_mg %>% 
                 map(\(s) {
                   tryCatch({
-                    df <- fread(s) %>% 
-                      filter(grepl(m, `system:index`))
-                    filename = basename(s)
+                    df <- fread(s)[grepl(m, `system:index`)]
+                    filename <- basename(s)
                     # get column names that need to be 
                     # coerced to numeric (all but index)
                     df_names <- names(df)[2:length(names(df))]
                     # coerce columns to numeric and add
                     # source/file name
-                    df <- df %>% 
-                      mutate(across(all_of(df_names),
-                                    ~ as.numeric(.)),
-                             `system:index` = as.character(`system:index`),
-                             source = filename)
+                    df[, (df_names) := lapply(.SD, as.numeric), .SDcols = df_names]
+                    df[, `system:index` := as.character(`system:index`)]
+                    df[, source := filename]
                     return(df)
                   },
                   error = function(e) {
                     return(NULL)
                   })}) %>% 
-                bind_rows()
+                rbindlist(., use.names = TRUE, fill = TRUE)
               
               ## file path prefix (incorporate WRS_prefix)
               fp_prefix <- if_else(!is.null(WRS_prefix),
                                    file.path(to_directory,
-                                             paste0(yaml$proj, 
+                                             paste0(yml$proj, 
                                                     "_collated_sites_",
                                                     m,
                                                     "_",
                                                     WRS_prefix)),
                                    file.path(to_directory,
-                                             paste0(yaml$proj, 
+                                             paste0(yml$proj, 
                                                     "_collated_sites_",
                                                     m)))
               ## file path suffix (incorporate dswe)
@@ -450,10 +438,10 @@ collate_csvs_from_drive <- function(file_type = NULL,
                                    paste0("_",
                                           dswe,
                                           "_",
-                                          yaml$run_date, 
+                                          yml$run_date, 
                                           ".feather"),
                                    paste0("_",
-                                          yaml$run_date, 
+                                          yml$run_date, 
                                           ".feather"))
               
               write_feather(m_collated, 
@@ -472,42 +460,40 @@ collate_csvs_from_drive <- function(file_type = NULL,
           data_mg <- subset_mg %>% 
             map(\(s) {
               tryCatch({
-                df <- fread(s) %>% 
-                  filter(grepl(m, `system:index`))
-                filename = basename(s)
+                df <- fread(s)[grepl(m, `system:index`)]
+                filename <- basename(s)
                 # get column names that need to be 
                 # coerced to numeric (all but index)
                 df_names <- names(df)[2:length(names(df))]
                 # coerce columns to numeric and add
                 # source/file name
-                df %>% 
-                  mutate(across(all_of(df_names),
-                                ~ as.numeric(.)),
-                         source = filename)
+                df[, (df_names) := lapply(.SD, as.numeric), .SDcols = df_names]
+                df[, `system:index` := as.character(`system:index`)]
+                df[, source := filename]
               },
               error = function(e) {
                 NULL
               })
             }) %>% 
-            bind_rows()
+            rbindlist(., use.names = TRUE, fill = TRUE)
           
           # create filepath using dswe setting
           fp <- if_else(!is.null(dswe),
                         file.path(to_directory,
-                                  paste0(yaml$proj, 
+                                  paste0(yml$proj, 
                                          "_collated_sites_",
                                          dswe,
                                          "_",
                                          file_type, 
                                          "_",
-                                         yaml$run_date, 
+                                         yml$run_date, 
                                          ".feather")),
                         file.path(to_directory,
-                                  paste0(yaml$proj, 
+                                  paste0(yml$proj, 
                                          "_collated_sites_",
                                          file_type, 
                                          "_",
-                                         yaml$run_date, 
+                                         yml$run_date, 
                                          ".feather")))
           
           write_feather(data_mg, 

@@ -6,7 +6,7 @@ default:
   google_email: "therossyndicate@gmail.com"
   # location where you want to store the output of the pipeline, if `update_and_share` is set to TRUE
   drive_project_folder: "~/FILE_PATH/" # note: must start with "~/" and end with "/"
-  # should pipeline use pre-existing site collaiton (all WQP/NWIS surface water sites)
+  # should pipeline use pre-existing site collation (all WQP/NWIS surface water sites)
   compile_locations: FALSE
   # date of stored site collation version.
   collated_site_version: "2025-06-02"
