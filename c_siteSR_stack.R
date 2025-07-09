@@ -225,7 +225,7 @@ if (config::get(config = general_config)$run_GEE) {
       name = c_make_collated_point_files,
       command = collate_csvs_from_drive(file_type = c_mission_groups,
                                         yml = b_yml,
-                                        wrs_prefix = c_WRS_prefix,
+                                        WRS_prefix = c_WRS_prefix,
                                         dswe = c_dswe_types,
                                         separate_missions = TRUE,
                                         depends = c_download_files),

@@ -99,7 +99,8 @@ if (config::get(config = general_config)$compile_locations) {
         
         # return sf, with only applicable columns
         to_wgs84  %>% 
-          select(org_id = agency_cd, loc_id = site_no, WGS84_Latitude, WGS84_Longitude, source) %>% 
+          select(org_id = agency_cd, loc_id = site_no, 
+                 site_tp_cd, WGS84_Latitude, WGS84_Longitude, source) %>% 
           st_drop_geometry() %>% 
           unique() %>%
           rowid_to_column("siteSR_id") %>% 
@@ -218,13 +219,26 @@ if (config::get(config = general_config)$compile_locations) {
       name = a_all_site_locations,
       command = {
         # join together
-        reduce(list(a_harmonized_NWIS_sites, a_harmonized_WQP_sites, a_AquaMatch_sites),
+        sites <- reduce(list(a_harmonized_NWIS_sites, a_harmonized_WQP_sites, a_AquaMatch_sites %>% st_drop_geometry()),
                full_join) %>%  
+          setDT(.)
+        sites[, harmonized_site_type := case_when(site_tp_cd == "ST" ~ "Stream",
+                                                  site_tp_cd %in% c("ST-CA", "ST-DCH") ~ "Ditch/Canal",
+                                                  site_tp_cd == "LK" ~ "Lake/Reservoir",
+                                                  site_tp_cd == "ES" ~ "Estuary",
+                                                  grepl("stream", MonitoringLocationTypeName, ignore.case = T) ~ "Stream",
+                                                  grepl("lake|reservoir", MonitoringLocationTypeName, ignore.case = T) ~ "Lake/Reservoir",
+                                                  MonitoringLocationTypeName == "Estuary" ~ "Estuary",
+                                                  grepl("canal|ditch", MonitoringLocationTypeName, ignore.case = T) ~ "Ditch/Canal",
+                                                  .default = "Other")]
+        sites %>% 
+          relocate(siteSR_id, org_id, loc_id, harmonized_site_type, WGS84_Latitude, WGS84_Longitude, source, HUCEightDigitCode) %>% 
+          filter(WGS84_Latitude != 0 & WGS84_Longitude != 0) %>% 
           st_as_sf(coords = c("WGS84_Longitude", "WGS84_Latitude"),
                    crs = "EPSG:4326", 
                    remove = FALSE) 
       },
-      packages = c("tidyverse", "sf", "targets")
+      packages = c("data.table", "tidyverse", "sf", "targets")
     ), 
     
     # save this as a .rds file in drive
@@ -256,7 +270,7 @@ if (config::get(config = general_config)$compile_locations) {
         get_file_ids(google_email = siteSR_config$google_email,
                      drive_folder = check_targets_drive, 
                      file_path = "a_compile_sites/out/all_site_locations_drive_id.csv", 
-                     depend = a_save_all_site_locs, 
+                     depend = list(a_save_all_site_locs_local, a_save_all_site_locs_drive),
                      filter_by = "a_all_site_locations")
       },
       packages = c("tidyverse", "googledrive")
@@ -269,7 +283,7 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_grouped_sites,
       command = a_all_site_locations %>% 
-        group_by(source, org_id) %>% 
+        group_by(source, harmonized_site_type) %>% 
         tar_group(),
       iteration = "group",
       packages = c("tidyverse", "sf", "targets")
@@ -282,7 +296,8 @@ if (config::get(config = general_config)$compile_locations) {
     # 1 = HUC8 determined from nhdplusTools (from NHD), WQP/AM site info was blank
     # 2 = HUC8 mismatch between WQP/AM assignment and nhdplusTools assignment, 
     # using nhdplusTools assignment
-    # 3 = HUC8 unable to be determined for site location
+    # 3 = HUC8 was assigned to estuary site, but not able to be assigned using this method
+    # 4 = HUC8 unable to be determined for site location
     
     # first step is to download the staged wbd dataset, since pinging the NHD API
     # is not sustainable, and repeating this 1 million times takes quite a bit of
@@ -312,7 +327,8 @@ if (config::get(config = general_config)$compile_locations) {
           mutate(flag_HUC8 = case_when(HUCEightDigitCode == assigned_HUC ~ 0,
                                        is.na(HUCEightDigitCode) & !is.na(assigned_HUC) ~ 1,
                                        HUCEightDigitCode != assigned_HUC ~ 2, 
-                                       is.na(HUCEightDigitCode) & is.na(assigned_HUC) ~ 3,
+                                       is.na(assigned_HUC) & !is.na(HUCEightDigitCode) & MonitoringLocationTypeName == "Estuary" ~ 3,
+                                       is.na(HUCEightDigitCode) & is.na(assigned_HUC) ~ 4,
                                        .default = NA_real_))
       },
       pattern = map(a_grouped_sites),
@@ -326,7 +342,7 @@ if (config::get(config = general_config)$compile_locations) {
     tar_target(
       name = a_HUC4_list,
       command = {
-        dt <- map(a_sites_add_HUC8, as.data.table) %>% 
+        dt <- map(a_sites_add_HUC8, setDT) %>% 
           rbindlist() 
         unique(str_sub(dt[!is.na(assigned_HUC), assigned_HUC], 1, 4))
       },
@@ -399,7 +415,7 @@ if (config::get(config = general_config)$compile_locations) {
           bind_rows()
         flowline_intersections <- map(a_add_NHD_flowline_info,
                                       function(f) {
-                                        # get the first object of the list item (intersection info)
+                                        # get the second object of the list item (intersection info)
                                         f[2]
                                       }) %>%
           bind_rows()

@@ -5,7 +5,7 @@
 #' folder, and collate them into .feather files subsetted per arguments in the
 #' function. If left to default, this will create 3 files per DSWE setting: a 
 #' metadata file, a LS457 file, and a LS89 file. For the purposes of this workflow
-#' all files are compressed using the "lz4" method.
+#' all files are compressed using the "lz4" method. 
 #'
 #' @param file_type text string; unique string for filtering files to be 
 #' downloaded from Drive. Current options: "LS457", "LS89", "metadata", 
