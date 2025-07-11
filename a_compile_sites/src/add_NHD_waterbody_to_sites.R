@@ -8,13 +8,14 @@
 #' @param sites_with_huc simple feature object of sites to pair with waterbodies
 #' @param huc4 4-digit character string to filter sites by
 #' @param GEE_buffer numeric value of buffer for GEE site extraction in meters
+#' @param huc8_wbd sf object containing staged huc8 objects from TNM
 #' 
 #' @returns a list object of a simple feature object of sites with additional fields from 
 #' NHDPlusV2 or NHD Best Resolution file, as well as flags for waterbody 
 #' assignment and a dataframe of intersections
 #' 
 #' 
-add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
+add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer, huc8_wbd) {
   
   message(paste0("Assigning NHD waterbodies to sites within ", huc4))
   
@@ -42,8 +43,25 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
     # download from the national map.
     if (huc4 < 1900) {
       
+      # getting the huc04 AOI can fail along boundaries of the US/Canada & US/Mexico
+      # so here, if the huc4 call doesn't work, we'll use the wbd sf object used
+      # to define the HUC8's to begin with.
       # get the aoi of the huc for grabbing waterbodies
       huc4_aoi <- get_huc(id = huc4, type = "huc04")
+      
+      if (is.null(huc4_aoi)) {
+        if (st_crs(huc8_wbd) != st_crs(huc4_lake_points)) {
+          huc4_lake_points <- st_transform(huc4_lake_points, st_crs(huc8_wbd))
+        }
+        # filter huc8 by huc4 digits
+        huc4_aoi <- huc8_wbd %>% 
+          filter(grepl(huc4, huc8))
+        # and then make sure that there are no huc8's that we included that we
+        # don't care about
+        huc4_aoi <- huc4_aoi[huc4_lake_points, ] %>% 
+          st_bbox() %>% 
+          st_as_sfc()
+      }
       
       # get the waterbodies in the huc
       huc4_wbd <- get_waterbodies(AOI = huc4_aoi) %>%
@@ -130,18 +148,15 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
     # NHD Best res is often in other crs (NAD83), so the points need to be converted if 
     # the polygons are.
     
-    if (st_crs(huc4_wbd) != st_crs(sf_subset)) {
-      sf_subset <- sf_subset %>% 
+    if (st_crs(huc4_wbd) != st_crs(huc4_lake_points)) {
+      huc4_lake_points <- huc4_lake_points %>% 
         st_transform(crs = st_crs(huc4_wbd))
     }
     
-    # walk through all of the sites and calculate how many waterbodies they
-    # intersect with given the buffer for GEE extraction. this assumes that the
-    # buffer does not extend beyond the HUC boundary
-    buffered_points <- st_buffer(sf_subset, GEE_buffer)
+    buffered_points <- st_buffer(huc4_lake_points, GEE_buffer)
     intersections <- st_intersects(buffered_points, huc4_wbd)
     intersecting_waterbodies <- tibble(
-      siteSR_id = sf_subset$siteSR_id,
+      siteSR_id = huc4_lake_points$siteSR_id,
       number_int_wb = lengths(intersections)
     )    
     
@@ -150,11 +165,6 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer) {
     # grab the waterbody rowid for the points - without a buffer. While
     # there are more steps to this workflow, it's exceptionally faster
     # than st_intersection().
-    
-    if (st_crs(huc4_wbd) != st_crs(huc4_lake_points)) {
-      huc4_lake_points <- huc4_lake_points %>% 
-        st_transform(crs = st_crs(huc4_wbd))
-    }
     
     huc4_wbd_intersect <- st_intersects(huc4_lake_points, huc4_wbd)
     

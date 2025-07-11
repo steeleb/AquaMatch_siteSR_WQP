@@ -9,6 +9,7 @@
 #' for spatial subsetting
 #' @param huc4 4-digit character string to filter sites by
 #' @param GEE_buffer numeric value of buffer for GEE site extraction in meters
+#' @param huc8_wbd sf object containing staged huc8 objects from TNM
 #' 
 #' @returns a list containing dataframe of the spatial feature information with 
 #' flowline and distance to flowline assignment as well as a dataframe of the 
@@ -17,7 +18,8 @@
 #' 
 add_NHD_flowline_to_sites <- function(sites_with_huc, 
                                       huc4,
-                                      GEE_buffer) {
+                                      GEE_buffer,
+                                      huc8_wbd) {
   
   message(paste0("Assigning NHD HR flowlines to sites within ", huc4))
   
@@ -37,6 +39,20 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       
       # get the aoi of the huc for grabbing flowlines
       huc4_aoi <- get_huc(id = huc4, type = "huc04")
+      
+      if (is.null(huc4_aoi)) {
+        if (st_crs(huc8_wbd) != st_crs(sf_subset)) {
+          sf_subset <- st_transform(sf_subset, st_crs(huc8_wbd))
+        }
+        # filter huc8 by huc4 digits
+        huc4_aoi <- huc8_wbd %>% 
+          filter(grepl(huc4, huc8))
+        # and then make sure that there are no huc8's that we included that we
+        # don't care about
+        huc4_aoi <- huc4_aoi[sf_subset, ] %>% 
+          st_bbox() %>% 
+          st_as_sfc()
+      }
       
       # get the flowlines in the huc
       huc4_fl <- get_nhdplus(AOI = huc4_aoi, realization = "flowline") %>%
@@ -144,9 +160,6 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     # we'll associate flowlines across all sites. locs are paired to
     # waterbodies in add_NHD_waterbody_to_sites()
     
-    # check to see if there are any points overlapping, if so, run matching
-    # process. otherwise, return NULL
-    
     # Here, we will just grab the closest flowline and the distance to that 
     # flowline. For each of them, arrange by fl_id for proper st_distance measure.
     matched <- sf_subset %>%
@@ -201,11 +214,17 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     message(paste0("HUC4 ", huc4, " was not able to be processed, 
                      noting in 'a_compile_sites/mid/huc4_fl_no_process.txt'"))
     if (!file.exists("a_compile_sites/mid/huc4_fl_no_process.txt")) {
-      write_lines(huc4, file = "a_compile_sites/mid/huc4_fl_no_process.txt")
+      write_lines(paste(huc4, 
+                        sf_subset %>% pull(harmonized_site_type) %>% first(),
+                        sf_subset %>% pull(source) %>% first(), sep = " "), 
+                  file = "a_compile_sites/mid/huc4_fl_no_process.txt")
       return(NULL)
     } else {
       text <- read_lines("a_compile_sites/mid/huc4_fl_no_process.txt")
-      new_text <- c(text, huc4)
+      new_text <- c(text, 
+                    paste(huc4, 
+                          sf_subset %>% pull(harmonized_site_type) %>% first(),
+                          sf_subset %>% pull(source) %>% first(), sep = " "))
       write_lines(new_text, "a_compile_sites/mid/huc4_fl_no_process.txt")
       return(NULL)
     }

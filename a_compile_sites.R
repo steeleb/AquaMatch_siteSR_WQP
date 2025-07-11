@@ -358,7 +358,8 @@ if (config::get(config = general_config)$compile_locations) {
         a_check_dir_structure
         add_NHD_waterbody_to_sites(sites_with_huc = a_sites_add_HUC8,
                                    huc4 = a_HUC4_list,
-                                   GEE_buffer = as.numeric(b_yml$site_buffer))
+                                   GEE_buffer = as.numeric(b_yml$site_buffer),
+                                   huc8_wbd = a_wbd_gdb)
       },
       pattern = cross(a_HUC4_list, a_sites_add_HUC8),
       iteration = "list",
@@ -372,7 +373,8 @@ if (config::get(config = general_config)$compile_locations) {
         a_check_dir_structure
         add_NHD_flowline_to_sites(sites_with_huc = a_sites_add_HUC8,
                                   huc4 = a_HUC4_list,
-                                  GEE_buffer = as.numeric(b_yml$site_buffer))
+                                  GEE_buffer = as.numeric(b_yml$site_buffer),
+                                  huc8_wbd = a_wbd_gdb)
       },
       pattern = cross(a_HUC4_list, a_sites_add_HUC8),
       iteration = "list",

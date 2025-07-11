@@ -7,7 +7,7 @@ default:
   # location where you want to store the output of the pipeline, if `update_and_share` is set to TRUE
   drive_project_folder: "~/aquamatch_siteSR_wqp/" # note: must start with "~/" and end with "/"
   # should pipeline use pre-existing site collation (all WQP/NWIS surface water sites)
-  compile_locations: TRUE
+  compile_locations: FALSE
   # date of stored site collation version.
   collated_site_version: "2025-06-04"
   # should the pekel visibility step be run? (requires GEE authentication and
