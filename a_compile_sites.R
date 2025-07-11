@@ -220,7 +220,7 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         # join together
         sites <- reduce(list(a_harmonized_NWIS_sites, a_harmonized_WQP_sites, a_AquaMatch_sites %>% st_drop_geometry()),
-               full_join) %>%  
+                        full_join) %>%  
           setDT(.)
         sites[, harmonized_site_type := case_when(site_tp_cd == "ST" ~ "Stream",
                                                   site_tp_cd %in% c("ST-CA", "ST-DCH") ~ "Ditch/Canal",
@@ -233,7 +233,7 @@ if (config::get(config = general_config)$compile_locations) {
                                                   .default = "Other")]
         sites %>% 
           relocate(siteSR_id, org_id, loc_id, harmonized_site_type, WGS84_Latitude, WGS84_Longitude, source, HUCEightDigitCode) %>% 
-          filter(WGS84_Latitude != 0 & WGS84_Longitude != 0) %>% 
+          filter(WGS84_Latitude != 0 & WGS84_Longitude != 0 & abs(WGS84_Latitude) != 1 & abs(WGS84_Longitude) != 1) %>% 
           st_as_sf(coords = c("WGS84_Longitude", "WGS84_Latitude"),
                    crs = "EPSG:4326", 
                    remove = FALSE) 
@@ -388,9 +388,9 @@ if (config::get(config = general_config)$compile_locations) {
         a_check_dir_structure
         # join the waterbody metadata data together
         waterbody_info <- map(a_add_NHD_waterbody_info,
-              function(w) {
-                w[1]}
-              ) %>%
+                              function(w) {
+                                w[1]}
+        ) %>%
           bind_rows() 
         # and the flowine data
         flowline_info <- map(a_add_NHD_flowline_info,
@@ -433,14 +433,14 @@ if (config::get(config = general_config)$compile_locations) {
         # fill in flags where HUC8 was not able to be assigned
         collated_sites <- collated_sites %>%
           mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),
-                 flag_wb = if_else(is.na(flag_fl), 4, flag_fl),
+                 flag_fl = if_else(is.na(flag_fl), 4, flag_fl),
                  # flag 0 = unlikely shoreline contamination
                  # flag 1 = possible shoreline contamination
-                 flag_optical_shoreline =  case_when(flag_wb != 0 ~ NA,
-                                                     dist_to_shore <= (as.numeric(b_yml$site_buffer) + 30) &
-                                                       flag_wb == 0 ~ 1,
-                                                     dist_to_shore > (as.numeric(b_yml$site_buffer) + 30) &
-                                                       flag_wb == 0 ~ 0),
+                 flag_optical_shoreline = case_when(flag_wb != 0 ~ NA,
+                                                    dist_to_shore <= (as.numeric(b_yml$site_buffer) + 30) &
+                                                      flag_wb == 0 ~ 1,
+                                                    dist_to_shore > (as.numeric(b_yml$site_buffer) + 30) &
+                                                      flag_wb == 0 ~ 0),
                  flag_thermal_MSS_shoreline = case_when(flag_wb != 0 ~ NA,
                                                         dist_to_shore <= (as.numeric(b_yml$site_buffer) + 120) &
                                                           flag_wb == 0 ~ 1,

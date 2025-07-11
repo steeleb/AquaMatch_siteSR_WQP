@@ -27,9 +27,9 @@ admin_update:
   google_email: "therossyndicate@gmail.com"
   drive_project_folder: "~/aquamatch_siteSR_wqp/"
   compile_locations: TRUE
-  collated_site_version: "2025-06-02" # this will become the date stamp for the new compilation!
+  collated_site_version: "2025-06-04" # this will become the date stamp for the new compilation!
   run_pekel: TRUE
   run_GEE: TRUE
-  update_and_share: TRUE 
   # note, pekel/gee version date is set in the `gee_config.yml` file
+  update_and_share: TRUE 
 
