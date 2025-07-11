@@ -456,6 +456,12 @@ if (config::get(config = general_config)$compile_locations) {
                                                            flag_wb == 0 ~ 1,
                                                          dist_to_shore > (as.numeric(b_yml$site_buffer) + 100) &
                                                            flag_wb == 0 ~ 0))
+        # coerce NA -> "" when wb/fl assignment but no gnis/name
+        collated_sites <- collated_sites %>% 
+          mutate(across(.cols = c(wb_gnis_id, wb_gnis_name), 
+                        .fns = ~ if_else(!is.na(wb_nhd_id) & is.na(.x), "", .x)),
+                 across(.cols = c(fl_gnis_id, fl_gnis_name),
+                        .fns = ~ if_else(!is.na(fl_nhd_id) & is.na(.x), "", .x)))
         write_csv(collated_sites,
                   paste0("a_compile_sites/out/lakeSR_collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
         collated_sites
