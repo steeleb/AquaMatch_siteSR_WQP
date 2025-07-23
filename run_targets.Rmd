@@ -16,7 +16,7 @@ interactive steps.
 We have a user guide which describes all the steps in this (and the lakeSR)
 workflow which [is available
 here](https://aquasat.github.io/AquaMatch_lakeSR/index.html). We strongly
-reccommend reading through the user guide if you are using data that result from
+recommend reading through the user guide if you are using data that result from
 this pipeline.
 
 ## Note
@@ -27,8 +27,8 @@ purposes only and does not imply endorsement by the U.S. Government.
 
 ## Pre-requisites
 
-siteSR_WQP relies on a configuration file (`config.yml`) to run specific
-profiles that determine what operations are being run. The file contains two
+siteSR relies on a configuration file (`config.yml`) to run specific profiles
+that determine what operations are being run. The file contains two
 configuration profiles: "default" and "admin_update".
 
 -   "default" runs the pipeline using publicly-stable versions of datasets from
@@ -36,23 +36,14 @@ configuration profiles: "default" and "admin_update".
     the pipeline
 
 -   "admin_update" is intended for use by ROSSyndicate members when updating
-    siteSR datasets, creating publicly-stable versions of siteSR to be
-    stored in the AquaMatch_siteSR repository.
+    siteSR datasets, creating publicly-stable versions of siteSR to be stored in
+    the AquaMatch_siteSR repository.
 
 This pipeline does not apply handoff coefficients between Landsat missions,
 which are imperative for analyzing the data that overlap multiple sensors. See
 the [user guide section on
 handoffs](https://aquasat.github.io/AquaMatch_lakeSR/define-handoff.html) for
 additional guidance on this matter.
-
-Proper configuration of harmonize_repo_directory and lakeSR_repo_directory is
-imperative as the siteSR workflow references files inside
-AquaMatch_harmonize_WQP and AquaMatch_lakeSR file structures. If this is
-incorrectly set up, users will receive a message to communicate this and the
-workflow will stop. All repositories stored on the AquaMatch GitHub will
-contain files that link to versions of the data that the AquaMatch team has
-harmonized so that a local run is not necessitated. Any run of the "default"
-configuration will require that the harmonize pipeline has been run locally.
 
 ## Install necessary packages
 

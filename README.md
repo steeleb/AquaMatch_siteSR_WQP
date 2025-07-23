@@ -35,3 +35,11 @@ This group of {targets} acquires Landsat Collection 2 SRST stacks for sites dete
 **d_siteSR_qa:**
 
 Collated Landsat data are filtered for quality based on broadly applicable thresholds. Export of QA'd SR data.
+
+## Note
+
+Landsat remote sensing images used in analyses courtesy of the United States Geological Survey. Any use of trade, firm, or product names is for descriptive purposes only and does not imply endorsement by the U.S. Government.
+
+## Disclaimer
+
+These data are preliminary or provisional and are subject to revision. They are being provided to meet the need for timely best science. The data have not received final approval by the U.S. Geological Survey (USGS) and are provided on the condition that neither the USGS nor the U.S. Government shall be held liable for any damages resulting from the authorized or unauthorized use of the data.
