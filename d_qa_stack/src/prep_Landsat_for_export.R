@@ -28,7 +28,7 @@ prep_Landsat_for_export <- function(file, file_type, out_path) {
   setDT(data)
   
   # if point data, add some columns for use
-  if (! grepl('metadata', file)) {
+  if (!grepl('metadata', file)) {
     # use data.table functions here (specifically for LS7, which is huge)
     # use stringi for better performance on large datasets
     data[, `:=`(

@@ -40,7 +40,7 @@ qa_and_document_LS <- function(mission_info,
                                thermal_maximum = 313.15,
                                ir_threshold = 0.1,
                                document_drops = TRUE,
-                               out_path = "7_qa_stack/qa/"
+                               out_path = "d_qa_stack/qa/"
 ) {
   
   # check DSWE arguments:
@@ -193,7 +193,7 @@ qa_and_document_LS <- function(mission_info,
       plot_fn <- paste0(mission_info$mission_id, "_", dswe, "_drop_summary.png")
       
       ggsave(plot = drops_plot, 
-             filename = file.path("7_qa_stack/out", plot_fn), 
+             filename = file.path(out_path, plot_fn), 
              dpi = 300, width = 6, height = 3, units = "in")
     }
     
