@@ -463,7 +463,7 @@ if (config::get(config = general_config)$compile_locations) {
                  across(.cols = c(fl_gnis_id, fl_gnis_name),
                         .fns = ~ if_else(!is.na(fl_nhd_id) & is.na(.x), "", .x)))
         write_csv(collated_sites,
-                  paste0("a_compile_sites/out/lakeSR_collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
+                  paste0("a_compile_sites/out/siteSR_collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
         collated_sites
       },
     ),

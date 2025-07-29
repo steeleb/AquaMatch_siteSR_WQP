@@ -1,36 +1,44 @@
 # Default: use stable harmonization pipeline, site collation, pekel run, and siteSR run.
 # Best for users who wish to run the pipeline to make different filtering decisions
 # in the siteSR dataset in the {targets} group `d_qa_stack`
+
 default:
+  
   # gmail account to associate with {googledrive}
   google_email: "therossyndicate@gmail.com"
-  # google drive location where you want to store the output of the pipeline, 
-  # if `update_and_share` is set to TRUE
+  
+  # location where you want to store the output of the pipeline, if `update_and_share` is set to TRUE
   drive_project_folder: "~/aquamatch_siteSR_wqp/" # note: must start with "~/" and end with "/"
+  
   # should pipeline perform new site collation for all WQP/NWIS surface water sites?
   # FALSE = use pre-existing collated sites
   # TRUE = re-collate data in the -a- group
   compile_locations: FALSE
-  # date of stored site collation version, see version options in 
-  # `a_compile_sites/out/sites_with_NHD_drive_id.csv`
+  
+  # date of stored site collation version.
   collated_site_version: "2025-06-04"
+  
   # should the pekel visibility step be run? (requires GEE authentication and
   # update of the `gee_config.yml` file)
   # FALSE = use pre-pulled pekel summary stats
   # TRUE = re-pull pekel summary stats in the -b- group
   # if set to TRUE, run_GEE must also be TRUE
   run_pekel: FALSE 
+  
   # should the GEE workflow to obtain remote sensing summaries be run? (if you set
   # `run_pekel` to TRUE and have made changes to that process, also set `run_GEE`
   # to TRUE. requires GEE authentication and update of the `gee_config.yml` file)
   run_GEE: FALSE
-  # date of stored pekel/gee version (if `run_pekel` and `run_GEE` set to FALSE)
+  
+  # date of stored pekel/gee version (if `run_pekel` and `run_GEE` set to false)
   pekel_gee_version: "2025-06-06" 
+  
   # should the pipeline 'export' and 'share' siteSR files? 
   # FALSE = files are collated locally, but not uploaded to Google Drive
   # TRUE = files are collated locall AND uploaded to drive. 
   # TRUE setting requires drive_project_folder designation
-  update_and_share: TRUE 
+  update_and_share: FALSE 
+
 
 # Update the stable dataset versions, intended to be used by the ROSS team
 admin_update:
