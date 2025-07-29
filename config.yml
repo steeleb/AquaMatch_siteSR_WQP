@@ -7,7 +7,8 @@ default:
   # gmail account to associate with {googledrive}
   google_email: "therossyndicate@gmail.com"
   
-  # location where you want to store the output of the pipeline, if `update_and_share` is set to TRUE
+  # location where you want to store the output of the pipeline, required if any of
+  # `update_and_share`, `compile_locations`, `run_pekel`, or `run_GEE` is set to TRUE
   drive_project_folder: "~/aquamatch_siteSR_wqp/" # note: must start with "~/" and end with "/"
   
   # should pipeline perform new site collation for all WQP/NWIS surface water sites?
@@ -25,9 +26,10 @@ default:
   # if set to TRUE, run_GEE must also be TRUE
   run_pekel: FALSE 
   
-  # should the GEE workflow to obtain remote sensing summaries be run? (if you set
-  # `run_pekel` to TRUE and have made changes to that process, also set `run_GEE`
-  # to TRUE. requires GEE authentication and update of the `gee_config.yml` file)
+  # should the GEE workflow to obtain remote sensing summaries (-c- group) be run? 
+  # (if you set `run_pekel` to TRUE and have made changes to that process, 
+  # also set `run_GEE` to TRUE. requires GEE authentication and update of the 
+  # `gee_config.yml` file)
   run_GEE: FALSE
   
   # date of stored pekel/gee version (if `run_pekel` and `run_GEE` set to false)
@@ -46,8 +48,8 @@ admin_update:
   drive_project_folder: "~/aquamatch_siteSR_wqp/"
   compile_locations: TRUE
   collated_site_version: "2025-06-04" # this will become the date stamp for the new compilation!
+  # note, pekel/gee version date is set in the `gee_config.yml` file
   run_pekel: TRUE
   run_GEE: TRUE
-  # note, pekel/gee version date is set in the `gee_config.yml` file
   update_and_share: TRUE 
 
