@@ -53,9 +53,12 @@ d_qa_stack <- list(
   
   tar_target(
     name = d_metadata_files,
-    command = list.files(file.path("c_siteSR_stack/mid/", b_yml$run_date), 
+    command = {
+      c_collated_siteSR_files
+      list.files(file.path("c_siteSR_stack/mid/", b_yml$run_date), 
                          full.names = TRUE) %>% 
       .[grepl("metadata", .)]
+    }
   ),
   
   # qa the siteSR stacks like we do with lakeSR
