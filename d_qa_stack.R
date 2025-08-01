@@ -53,9 +53,12 @@ d_qa_stack <- list(
   
   tar_target(
     name = d_metadata_files,
-    command = list.files(file.path("c_siteSR_stack/mid/", b_yml$run_date), 
+    command = {
+      c_collated_siteSR_files
+      list.files(file.path("c_siteSR_stack/mid/", b_yml$run_date), 
                          full.names = TRUE) %>% 
       .[grepl("metadata", .)]
+    }
   ),
   
   # qa the siteSR stacks like we do with lakeSR
@@ -70,6 +73,7 @@ d_qa_stack <- list(
     },
     packages = c("arrow", "data.table", "tidyverse", "ggrepel", "viridis", "stringi"),
     pattern = cross(d_mission_identifiers, d_dswe_types),
+    deployment = "main" # can not be run multi-core
   ),
   
   # now add siteSR id, and necessary information for data storage, save as .csv
@@ -77,7 +81,9 @@ d_qa_stack <- list(
     name = d_qa_files_list,
     command = {
       d_qa_Landsat_files
-      list.files("d_qa_stack/qa/", full.names = TRUE)
+      list.files("d_qa_stack/qa/", 
+                 full.names = TRUE,
+                 pattern = ".feather")
     },
     cue = tar_cue("always")
   ),
@@ -88,7 +94,8 @@ d_qa_stack <- list(
                                       file_type = "csv",
                                       out_path = "d_qa_stack/export/"),
     pattern = map(d_qa_files_list),
-    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
+    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi"),
+    deployment = "main"
   ),
   
   tar_target(
@@ -98,6 +105,64 @@ d_qa_stack <- list(
                                       out_path = "d_qa_stack/export/"),
     pattern = map(d_metadata_files),
     packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
+  ),
+  
+  tar_target(
+    name = d_make_Landsat_feather_files,
+    command = {
+      if (!dir.exists(file.path("d_qa_stack/out/", b_yml$run_date))) {
+        dir.create(file.path("d_qa_stack/out/", b_yml$run_date))
+      }
+      fns  <- d_qa_files_list[grepl(d_mission_identifiers$mission_id, d_qa_files_list)]
+      fns_dswe <- fns[grepl(paste0(d_dswe_types, "_"), fns)]
+      
+      out_fp <- paste0("d_qa_stack/out/", 
+                       b_yml$run_date, 
+                       "/siteSR_", 
+                       str_replace(d_mission_identifiers$mission_names," ", ""),
+                       "_", d_dswe_types, "_", 
+                       b_yml$run_date, ".feather")
+      
+      # create a temp directory for the temporary Arrow dataset
+      temp_dataset_dir <- tempfile("arrow_ds_")
+      dir.create(temp_dataset_dir)
+      
+      # these files need to be processed by chunk to deal with memory issues
+      walk(fns_dswe, function(fn) {
+        # read chunk
+        chunk <- read_feather(fn)
+        
+        # add source_file column to partition by
+        chunk[, source_file := tools::file_path_sans_ext(basename(fn))]
+        
+        # write chunk using partitioning (otherwise we hit memory issues)
+        write_dataset(chunk,
+                      path = temp_dataset_dir,
+                      format = "feather",
+                      partitioning = "source_file",
+                      existing_data_behavior = "delete_matching")
+      })
+      
+      # connect to the arrow-partitioned file
+      ds <- open_dataset(temp_dataset_dir, format = "feather")
+      
+      # and grab all the data and write the feather file
+      ds %>% 
+        collect() %>% 
+        select(-source_file) %>% 
+        write_feather(., out_fp, compression = "lz4")
+      
+      # housekeeping
+      unlink(temp_dataset_dir, recursive = TRUE)
+      gc()
+      Sys.sleep(5)
+      
+      # return filepath
+      out_fp
+    },
+    pattern = cross(d_dswe_types, d_mission_identifiers),
+    packages = c("arrow", "data.table", "tidyverse"),
+    deployment = "main" # these are huge, so make sure this runs solo
   )
   
 )
@@ -163,12 +228,34 @@ if (config::get(config = general_config)$update_and_share) {
                          ".csv"))
         drive_ids
       },
+      packages = c("tidyverse", "googledrive")
+    ), 
+    
+    tar_target(
+      name = d_send_feather_files_to_Drive,
+      command = export_single_file(file_path = d_make_Landsat_feather_files,
+                                   drive_path = d_check_Drive_siteSR_folder,
+                                   google_email = siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      deployment = "main"
+      pattern = map(d_make_Landsat_feather_files)
+    ),
+    
+    tar_target(
+      name = d_save_feather_drive_info,
+      command = {
+        d_check_dir_structure
+        drive_ids <- d_send_feather_files_to_Drive %>% 
+          select(name, id)
+        write_csv(drive_ids,
+                  paste0("d_qa_stack/out/siteSR_Landsat_QA_feather_files_drive_ids_v",
+                         b_yml$run_date,
+                         ".csv"))
+        drive_ids
+      },
+      packages = c("tidyverse", "googledrive")
     )
     
   )
-  # collate site info/site id info here
   
 }
 

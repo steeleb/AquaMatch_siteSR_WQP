@@ -38,7 +38,8 @@ c_siteSR_stack/run/*
 d_qa_stack/qa/*
 d_qa_stack/out/*
 d_qa_stack/export/*
-!d_qa_stack/out/siteSR_qa_files_drive_ids_v2025-02-24.csv
+!d_qa_stack/out/siteSR_qa_files_drive_ids_v2025-06-06.csv
+!d_qa_stack/out/siteSR_Landsat_QA_feather_files_drive_ids_v2025-06-06.csv
 
 
 # Python environment
