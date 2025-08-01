@@ -293,11 +293,14 @@ if (config::get(config = general_config)$compile_locations) {
     # but a few need it assigned (or are assigned incorrectly), as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
     # 0 = HUC8 reported in WQP site information, matches nhdplusTools assignment
-    # 1 = HUC8 determined from nhdplusTools (from NHD), WQP/AM site info was blank
-    # 2 = HUC8 mismatch between WQP/AM assignment and nhdplusTools assignment, 
-    # using nhdplusTools assignment
-    # 3 = HUC8 was assigned to estuary site, but not able to be assigned using this method
-    # 4 = HUC8 unable to be determined for site location
+    # 1 = HUC8 successfully assigned using nhdplusTools, no HUC8 reported in 
+    # HUCEightDigitCode
+    # 2 = HUC8 mismatch between Water Quality Portal HUCEightDigitCode assignment 
+    # and nhdplusTools assignment
+    # 3 = HUCEightDigitCode was assigned to a site type of estuary, but not able 
+    # to be assigned using the nhdplusTools method
+    # 4 = HUC8 unable to be assigned for site location using the nhdplusTools 
+    # method and was not provided by WQP/NWIS site information
     
     # first step is to download the staged wbd dataset, since pinging the NHD API
     # is not sustainable, and repeating this 1 million times takes quite a bit of
@@ -432,8 +435,9 @@ if (config::get(config = general_config)$compile_locations) {
           slice(1, .by = siteSR_id)
         # fill in flags where HUC8 was not able to be assigned
         collated_sites <- collated_sites %>%
-          mutate(flag_wb = if_else(is.na(flag_wb), 3, flag_wb),
+          mutate(flag_wb = if_else(is.na(flag_wb), 4, flag_wb),
                  flag_fl = if_else(is.na(flag_fl), 4, flag_fl),
+                 # add shoreline flags for points in waterbody (flag_wb == 0)
                  # flag 0 = unlikely shoreline contamination
                  # flag 1 = possible shoreline contamination
                  flag_optical_shoreline = case_when(flag_wb != 0 ~ NA,
