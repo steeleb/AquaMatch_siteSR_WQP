@@ -325,18 +325,26 @@ if (config::get(config = general_config)$run_GEE) {
     ),
     
     tar_target(
-      name = c_collated_siteSR_files,
+      name = c_download_siteSR_files,
       command = {
         c_check_dir_structure
         retrieve_data(id_df = c_save_collated_Drive_info, 
                       local_folder = paste0("c_siteSR_stack/mid/",
                                             siteSR_config$pekel_gee_version), 
                       google_email = siteSR_config$google_email)
+      },
+      packages = c("tidyverse", "googledrive"),
+      pattern = c_save_collated_Drive_info
+    ),
+    
+    tar_target(
+      name = c_collated_siteSR_files,      
+      command = {
+        c_download_siteSR_files
         list.files(path = paste0("c_siteSR_stack/mid/",
                                  siteSR_config$pekel_gee_version), 
                    full.names = TRUE)
-      },
-      packages = c("tidyverse", "googledrive")
+      }
     )
     
   )
