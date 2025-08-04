@@ -436,7 +436,7 @@ if (config::get(config = general_config)$compile_locations) {
         # fill in flags where HUC8 was not able to be assigned
         collated_sites <- collated_sites %>%
           mutate(flag_wb = if_else(is.na(flag_wb), 4, flag_wb),
-                 flag_fl = if_else(is.na(flag_fl), 4, flag_fl),
+                 flag_fl = if_else(is.na(flag_fl), 5, flag_fl),
                  # add shoreline flags for points in waterbody (flag_wb == 0)
                  # flag 0 = unlikely shoreline contamination
                  # flag 1 = possible shoreline contamination
