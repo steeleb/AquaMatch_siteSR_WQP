@@ -226,8 +226,9 @@ if (config::get(config = general_config)$compile_locations) {
                                                   site_tp_cd %in% c("ST-CA", "ST-DCH") ~ "Ditch/Canal",
                                                   site_tp_cd == "LK" ~ "Lake/Reservoir",
                                                   site_tp_cd == "ES" ~ "Estuary",
+                                                  grepl("pond", MonitoringLocationTypeName, ignore.case = T) ~ "Pond",
                                                   grepl("stream", MonitoringLocationTypeName, ignore.case = T) ~ "Stream",
-                                                  grepl("lake|reservoir", MonitoringLocationTypeName, ignore.case = T) ~ "Lake/Reservoir",
+                                                  grepl("lake|reservoir|impoundment", MonitoringLocationTypeName, ignore.case = T) ~ "Lake/Reservoir",
                                                   MonitoringLocationTypeName == "Estuary" ~ "Estuary",
                                                   grepl("canal|ditch", MonitoringLocationTypeName, ignore.case = T) ~ "Ditch/Canal",
                                                   .default = "Other")]
@@ -445,11 +446,11 @@ if (config::get(config = general_config)$compile_locations) {
                                                       flag_wb == 0 ~ 1,
                                                     dist_to_shore > (as.numeric(b_yml$site_buffer) + 30) &
                                                       flag_wb == 0 ~ 0),
-                 flag_thermal_MSS_shoreline = case_when(flag_wb != 0 ~ NA,
-                                                        dist_to_shore <= (as.numeric(b_yml$site_buffer) + 120) &
-                                                          flag_wb == 0 ~ 1,
-                                                        dist_to_shore > (as.numeric(b_yml$site_buffer) + 120) &
-                                                          flag_wb == 0 ~ 0),
+                 flag_thermal_TM_shoreline = case_when(flag_wb != 0 ~ NA,
+                                                       dist_to_shore <= (as.numeric(b_yml$site_buffer) + 120) &
+                                                         flag_wb == 0 ~ 1,
+                                                       dist_to_shore > (as.numeric(b_yml$site_buffer) + 120) &
+                                                         flag_wb == 0 ~ 0),
                  flag_thermal_ETM_shoreline = case_when(flag_wb != 0 ~ NA,
                                                         dist_to_shore <= (as.numeric(b_yml$site_buffer) + 60) &
                                                           flag_wb == 0 ~ 1,
@@ -485,6 +486,7 @@ if (config::get(config = general_config)$compile_locations) {
                              file_type = "rds")
       },
       packages = c("tidyverse", "googledrive"),
+      cue = tar_cue("always")
     ),
     
     tar_target(

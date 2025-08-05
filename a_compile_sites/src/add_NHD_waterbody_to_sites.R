@@ -33,7 +33,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer, huc8_wb
     # split the sites by harmonized location type - for this, we'll just
     # pair lake/reservoir/other. river/ditch/canal sites are paired in add_NHD_flowline_to_sites()
     huc4_lake_points <- sf_subset %>%
-      filter(harmonized_site_type %in% c("Lake/Reservoir", "Estuary", "Other"))
+      filter(harmonized_site_type %in% c("Lake/Reservoir", "Estuary", "Pond", "Other"))
     
     # check to make sure there are obs when filtered for lake/reservoir/other, otherwise
     # return null from function
