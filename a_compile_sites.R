@@ -254,6 +254,7 @@ if (config::get(config = general_config)$compile_locations) {
                              file_type = "rds")
       },
       packages = c("tidyverse", "googledrive"),
+      cue = tar_cue("always")
     ),
     
     # save this as a .csv file locally for GEE run

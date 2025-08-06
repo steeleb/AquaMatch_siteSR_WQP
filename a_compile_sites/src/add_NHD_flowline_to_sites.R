@@ -175,7 +175,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
              # for lake/res sites: the distance can be retained, since the distance 
              # could be large for large waterbodies
              across(all_of(c("fl_nhd_id", "fl_gnis_id", "fl_gnis_name", "fl_stream_order", "fl_fcode")),
-                    ~ if_else(dist_to_fl > 500 & grepl("river|stream", MonitoringLocationTypeName, ignore.case = T),
+                    ~ if_else(dist_to_fl > 500 & grepl("river|stream", harmonized_site_type, ignore.case = T),
                               NA,
                               .))) %>%
       select(-fl_id)
@@ -183,18 +183,18 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     # join the matched and matched together, flag fl assignment
     assignment <- matched %>%
       # 0 = point <= 100m from a flowline 
-      # 1 = point between 100m and GEE buffer distance (200m) from flowline (nhd_id info and distance info)
-      # 2 = point between GEE buffer distance and 500m proximate to flowline (nhd_id info and distance info)
-      # 3 = point unable to be assigned to flowline for a stream site (no nhd_id, but
+      # 1 = point between 100m and GEE buffer distance (200m) from a flowline (nhd_id info and distance info)
+      # 2 = point between GEE buffer distance and 500m proximate to a flowline (nhd_id info and distance info)
+      # 3 = point unable to be assigned to a flowline for a stream site (no nhd_id, but
       #     distance info, dist > 500m)
-      # 4 = point > 500m proximate to flowline, but a lake/res site ()
+      # 4 = point > 500m proximate to flowline, but a lake/res site
       # 5 = point does not have HUC8 assignment, so no flowline assigned (not assigned here)
       mutate(flag_fl = case_when(!is.na(fl_nhd_id) & dist_to_fl <= 100 ~ 0,
                                  !is.na(fl_nhd_id) & between(dist_to_fl, 100, GEE_buffer) ~ 1,
                                  !is.na(fl_nhd_id) & between(dist_to_fl, GEE_buffer, 500) ~ 2,
                                  is.na(fl_nhd_id) & !is.na(dist_to_fl) ~ 3,
                                  !is.na(fl_nhd_id) & dist_to_fl > 500 & 
-                                   grepl("lake|pond|reservoir", MonitoringLocationTypeName, ignore.case = T) ~ 4))
+                                   grepl("lake|pond|reservoir", harmonized_site_type, ignore.case = T) ~ 4))
     
     # return unique site info, huc code, and all the flowline info; also intersecting
     # flowlines for all sites in huc
