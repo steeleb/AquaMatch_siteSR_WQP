@@ -72,10 +72,15 @@ qa_and_document_LS <- function(mission_info,
     } else {
       "IMAGE_QUALITY_OLI"
     }
+    
+    # just grab image quality and system index
     metadata <- read_feather(metadata_fn) %>% 
       select(c(`system:index`, all_of(image_qual_name)))
-    names(metadata) <- c("sat_id", "image_qual")
     
+    # rename system index, rename image quality to generic
+    names(metadata) <- c("sat_id", "image_qual")
+
+
     # store pcount column name via dswe designation
     pCount_column <- sym(paste0("pCount_", tolower(dswe)))
     
@@ -89,9 +94,23 @@ qa_and_document_LS <- function(mission_info,
                     data <- read_feather(fp) 
                     setDT(data)
                     
-                    data[, sat_id := stri_replace_last_regex(`system:index`, "_(NWIS|WQP|AM)_.*$", "")]
+                    # use data.table functions here (specifically for LS7, which is huge)
+                    # use stringi for better performance on large datasets
+                    data[, `:=`(
+                      dswe_filter = stri_extract_first_regex(fp, "DSWE\\d+a?"),
+                      sat_id = stri_replace_last_regex(`system:index`, "_(NWIS|WQP|AM)_.*$", ""),
+                      siteSR_id = stri_extract_last_regex(`system:index`, "(NWIS|WQP|AM)_.*$"),
+                      mission = stri_extract_first_regex(`system:index`, "L[A-Z]0\\d"),
+                      date = as.IDate(stri_extract_first_regex(`system:index`, "\\d{8}"), format = "%Y%m%d")
+                    )]
+                    
+                    # and now pull those new columns to the front
+                    new_cols <- c("siteSR_id", "dswe_filter", "mission", "sat_id", "date")
+                    setcolorder(data, c(new_cols, setdiff(names(data), new_cols)))
+                    data <- data %>% select(-`system:index`)
                     
                     all_data <- nrow(data)
+                    
                     # note, this workflow iteratively overwrites the 'data' 
                     # object to save memory.
                     

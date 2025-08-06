@@ -29,18 +29,6 @@ prep_Landsat_for_export <- function(file, file_type, out_path) {
   
   # if point data, add some columns for use
   if (!grepl('metadata', file)) {
-    # use data.table functions here (specifically for LS7, which is huge)
-    # use stringi for better performance on large datasets
-    data[, `:=`(
-      siteSR_id = stri_extract_last_regex(`system:index`, "[^_]+"), 
-      dswe_filter = stri_extract_first_regex(file, "DSWE\\d+a?"),
-      mission = stri_extract_first_regex(`system:index`, "L[A-Z]0\\d"), 
-      date = as.IDate(stri_extract_first_regex(`system:index`, "\\d{8}"), format = "%Y%m%d") 
-    )]
-    
-    # and now pull those new columns to the front
-    new_cols <- c("siteSR_id", "dswe_filter", "mission", "sat_id", "date")
-    setcolorder(data, c(new_cols, setdiff(names(data), new_cols)))
     
     # get the basename of the file, without the extension
     out_file_base <- file_path_sans_ext(basename(file)) 
@@ -61,8 +49,9 @@ prep_Landsat_for_export <- function(file, file_type, out_path) {
 
   } else {
      
+    # rename system index to sat_id
     setnames(data, "system:index", "sat_id")
-    
+
     # filter out images with poor Image Quality (we do this for all sites)
     # make the name for image quality, since it changes through mission groups
     image_qual_name <- if (grepl("LS457", file)) {
