@@ -53,12 +53,8 @@ d_qa_stack <- list(
   
   tar_target(
     name = d_metadata_files,
-    command = {
-      c_collated_siteSR_files
-      list.files(file.path("c_siteSR_stack/mid/", b_yml$run_date), 
-                         full.names = TRUE) %>% 
+    command = c_collated_siteSR_files %>% 
       .[grepl("metadata", .)]
-    }
   ),
   
   # qa the siteSR stacks like we do with lakeSR
@@ -202,7 +198,8 @@ if (config::get(config = general_config)$update_and_share) {
                                    drive_path = d_check_Drive_siteSR_folder,
                                    google_email = siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = map(d_Landsat_files_for_export)
+      pattern = map(d_Landsat_files_for_export),
+      cue = tar_cue("always")
     ),
     
     tar_target(
@@ -211,7 +208,8 @@ if (config::get(config = general_config)$update_and_share) {
                                    drive_path = d_check_Drive_siteSR_folder,
                                    google_email = siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = map(d_Landsat_metadata_for_export)
+      pattern = map(d_Landsat_metadata_for_export),
+      cue = tar_cue("always")
     ),
     
     tar_target(
@@ -228,7 +226,8 @@ if (config::get(config = general_config)$update_and_share) {
                          ".csv"))
         drive_ids
       },
-      packages = c("tidyverse", "googledrive")
+      packages = c("tidyverse", "googledrive"),
+      cue = tar_cue("always")
     ), 
     
     tar_target(
@@ -237,7 +236,8 @@ if (config::get(config = general_config)$update_and_share) {
                                    drive_path = d_check_Drive_siteSR_folder,
                                    google_email = siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = map(d_make_Landsat_feather_files)
+      pattern = map(d_make_Landsat_feather_files),
+      cue = tar_cue("always")
     ),
     
     tar_target(
@@ -252,7 +252,8 @@ if (config::get(config = general_config)$update_and_share) {
                          ".csv"))
         drive_ids
       },
-      packages = c("tidyverse", "googledrive")
+      packages = c("tidyverse", "googledrive"),
+      cue = tar_cue("always")
     )
     
   )
