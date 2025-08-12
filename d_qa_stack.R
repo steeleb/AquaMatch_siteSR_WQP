@@ -279,21 +279,11 @@ if (config::get(config = general_config)$update_and_share) {
     
     tar_target(
       name = d_send_siteSR_files_to_drive,
-      command = export_single_file(file_path = d_Landsat_files_for_export,
+      command = export_single_file(file_path = d_all_sorted_Landsat_files,
                                    drive_path = d_check_Drive_siteSR_folder,
                                    google_email = siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = map(d_Landsat_files_for_export),
-      cue = tar_cue("always")
-    ),
-    
-    tar_target(
-      name = d_send_metadata_files_to_drive,
-      command = export_single_file(file_path = d_Landsat_metadata_for_export,
-                                   drive_path = d_check_Drive_siteSR_folder,
-                                   google_email = siteSR_config$google_email),
-      packages = c("tidyverse", "googledrive"),
-      pattern = map(d_Landsat_metadata_for_export),
+      pattern = map(d_all_sorted_Landsat_files),
       cue = tar_cue("always")
     ),
     

@@ -75,17 +75,30 @@ sort_qa_Landsat_data <- function(qa_files,
       # drop assigned_HUC from site info file
       data[, assigned_HUC := NULL]
       
-      #make a file path name
-      save_to_fpn <- file.path("d_qa_stack/export/",
-                               paste0("siteSR_HUC2_",
-                                      HUC2,
-                                      "_", 
-                                      str_replace(mission_info$mission_names, " ", ""),
-                                      "_", 
-                                      dswe,
-                                      "_v",
-                                      gee_identifier, 
-                                      ".csv"))
+      if (!is.na(HUC2)) {
+        #make a file path name
+        save_to_fpn <- file.path("d_qa_stack/export/",
+                                 paste0("siteSR_HUC2_",
+                                        HUC2,
+                                        "_", 
+                                        str_replace(mission_info$mission_names, " ", ""),
+                                        "_", 
+                                        dswe,
+                                        "_v",
+                                        gee_identifier, 
+                                        ".csv"))
+      } else {
+        #make a file path name
+        save_to_fpn <- file.path("d_qa_stack/export/",
+                                 paste0("siteSR_noHUC2_",
+                                        str_replace(mission_info$mission_names, " ", ""),
+                                        "_", 
+                                        dswe,
+                                        "_v",
+                                        gee_identifier, 
+                                        ".csv"))
+        
+      }
       
       # write that csv file in the out folder
       fwrite(data, save_to_fpn)
