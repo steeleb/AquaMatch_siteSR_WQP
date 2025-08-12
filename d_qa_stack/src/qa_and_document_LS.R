@@ -141,7 +141,7 @@ qa_and_document_LS <- function(mission_info,
                                                        NA_real_, 
                                                        med_SurfaceTemp))
                     
-                    # flag thermal > 213.15 (above 40 deg C), recode only temp
+                    # flag thermal > 313.15 (above 40 deg C), recode only temp
                     ## flag_temp_max: 0 = valid data, 1 = no data available, 
                     ##                2 = recoded for above temp threshold
                     data <- data %>% 

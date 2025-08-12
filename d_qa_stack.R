@@ -79,28 +79,110 @@ d_qa_stack <- list(
       d_qa_Landsat_files
       list.files("d_qa_stack/qa/", 
                  full.names = TRUE,
-                 pattern = ".feather")
+                 pattern = ".feather") %>% 
+        # make sure gee version is right
+        .[grepl(paste0(b_yml$run_date, "_filtered"), .)]
     },
     cue = tar_cue("always")
   ),
   
+  # create a list of HUC2's to map over
   tar_target(
-    name = d_Landsat_files_for_export,
-    command = prep_Landsat_for_export(file = d_qa_files_list,
-                                      file_type = "csv",
-                                      out_path = "d_qa_stack/export/"),
-    pattern = map(d_qa_files_list),
-    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi"),
-    deployment = "main"
+    name = d_unique_huc2,
+    command = {
+      a_sites_with_NHD_info %>%
+        filter(siteSR_id %in% b_visible_sites$id) %>%
+        distinct(huc2 = str_sub(assigned_HUC, 1, 2)) %>%
+        pull(huc2)
+    }
   ),
   
+  # Landsat 4 is small enough for a single file
   tar_target(
-    name = d_Landsat_metadata_for_export,
-    command = prep_Landsat_for_export(file = d_metadata_files,
-                                      file_type = "csv", 
-                                      out_path = "d_qa_stack/export/"),
+    name = d_Landsat4_collated_data,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list, 
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>% 
+                                     filter(mission_names == "Landsat 4"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types),
+    pattern = map(d_dswe_types),
+    packages = c("data.table", "tidyverse", "arrow", "stringi")
+  ),
+  
+  # Landsat 5, 7, 8 need to be separated by HUC2
+  tar_target(
+    name = d_collated_Landsat5_by_huc2,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>%
+                                     filter(mission_names == "Landsat 5"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types,
+                                   HUC2 = d_unique_huc2),
+    pattern = cross(d_dswe_types, d_unique_huc2),
+    packages = c("data.table", "tidyverse", "arrow", "stringi"),
+    deployment = "main" # too big for multicore
+  ),
+
+  tar_target(
+    name = d_collated_Landsat7_by_huc2,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>%
+                                     filter(mission_names == "Landsat 7"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types,
+                                   HUC2 = d_unique_huc2),
+    pattern = cross(d_dswe_types, d_unique_huc2),
+    packages = c("data.table", "tidyverse", "arrow", "stringi"),
+    deployment = "main" # too big for multicore
+  ),
+
+  tar_target(
+    name = d_collated_Landsat8_by_huc2,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>%
+                                     filter(mission_names == "Landsat 8"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types,
+                                   HUC2 = d_unique_huc2),
+    pattern = cross(d_dswe_types, d_unique_huc2),
+    packages = c("data.table", "tidyverse", "arrow", "stringi"),
+    deployment = "main" # too big for multicore
+  ),
+
+  # Landsat 9 is small enough to be a single file.
+  tar_target(
+    name = d_Landsat9_collated_data,
+  command = sort_qa_Landsat_data(qa_files = d_qa_files_list, 
+                                 gee_identifier = b_yml$run_date,
+                                 mission_info = d_mission_identifiers %>% 
+                                   filter(mission_names == "Landsat 9"),
+                                 site_info = a_sites_with_NHD_info,
+                                 dswe = d_dswe_types),
+  pattern = map(d_dswe_types),
+    packages = c("data.table", "tidyverse", "arrow", "stringi")
+  ),
+
+  # metadata
+  tar_target(
+    name = d_Landsat_metadata_formatted,
+    command = prep_LS_metadata_for_export(file = d_metadata_files,
+                                          file_type = "csv",
+                                          gee_identifier = b_yml$run_date,
+                                          out_path = "d_qa_stack/export"),
     pattern = map(d_metadata_files),
-    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
+    packages = c("data.table", "tidyverse", "arrow", "stringi")
+  ),
+  
+  # make a list of the collated and sorted files created
+  tar_target(
+    name = d_all_sorted_Landsat_files,
+    command = as.vector(c(d_Landsat4_collated_data, d_collated_Landsat5_by_huc2,
+                          d_collated_Landsat7_by_huc2, d_collated_Landsat8_by_huc2,
+                          d_Landsat9_collated_data, d_Landsat_metadata_formatted))
   ),
   
   tar_target(
@@ -109,7 +191,10 @@ d_qa_stack <- list(
       if (!dir.exists(file.path("d_qa_stack/out/", b_yml$run_date))) {
         dir.create(file.path("d_qa_stack/out/", b_yml$run_date))
       }
-      fns  <- d_qa_files_list[grepl(d_mission_identifiers$mission_id, d_qa_files_list)]
+      
+      # filter for identifier
+      fns  <- d_all_sorted_Landsat_files[grepl(d_mission_identifiers$mission_names, 
+                                               d_all_sorted_Landsat_files)]
       fns_dswe <- fns[grepl(paste0(d_dswe_types, "_"), fns)]
       
       out_fp <- paste0("d_qa_stack/out/", 
