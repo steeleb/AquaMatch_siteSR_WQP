@@ -81,9 +81,9 @@ lapply(packages, package_installer)
 
 ## Authenticate and initialize Earth Engine
 
-If you have used the default configuration, you will not need to follow these
+If you are using the `default` configuration, you will not need to follow these
 steps. If you have set the general configuration file (`config.yml`) arguments
-of `run_pekel` or \`run_GEE\` to TRUE, you will need to have [installed and
+of `run_pekel` or `run_GEE` to TRUE, you will need to have [installed and
 initialized the `gcloud CLI`](https://cloud.google.com/sdk/docs/install) and
 have a [Google Earth Engine
 account](https://code.earthengine.google.com/register) prior to running this
@@ -97,23 +97,81 @@ the R file 'src/py/pySetup.R'. This will take a few minutes if you haven't yet
 run the python setup script while it creates a virtual environment.
 
 ```{r}
-source("python/pySetup.R")
+if (!dir.exists("env")) {
+  source("python/pySetup.R")
+} else {
+  reticulate::use_condaenv(file.path(getwd(), "env"))
+}
 ```
 
-### Authenticate your instance of GEE
+The final output of the previous cell will be "conda environment activated" in
+your console if you have not run the python setup script before, or you may get
+a warning similar to that below if you have previously run the python setup
+script:
+
+![](images/python_warning_okay.png)
+
+Now, we'll make sure that the Earth Engine API is set up correctly. Running this
+code chunk will open a web browser if you have not used your account with GEE
+before. Make sure that the credentials you use are the same that appear in your
+GEE config file. When your browser will indicate that you have successfully
+authenticated, return here to finish this step.
+
+If the following python code chunk errors out with a "ModuleNotFoundError",
+please restart your R session and re-run the previous code chunk before
+re-running the following python chunk. If issues persist, you may need to delete
+the 'env/' folder and repeat the above step again.
 
 ```{python}
 import ee
+import yaml
 
-ee.Authenticate(auth_mode = "localhost")
+# note, you will need to update this file path if you are using a different config
+# file
+with open("gee_config.yml") as config:
+    try:
+        cfg = yaml.safe_load(config)
+    except yaml.YAMLError as exc:
+        print(exc)
+
+google = cfg["google_settings"]
+ee_proj = next(item['ee_proj'] for item in google if 'ee_proj' in item)
+
+ee.Authenticate(auth_mode="localhost")
+ee.Initialize(project=ee_proj)
 ```
 
+Executing ee.Initialize() should result in either no message or a message from
+Google that does not contain WARNING or ERROR. If you receive a message with
+WARNING or ERROR, go back and check your configuration file and be sure that the
+email address (`google_email`) and `ee_proj` exists and you have write
+permissions.
+
 ## Run the targets pipeline and output a network graph.
+
+Warning: Running the complete workflow with with `run_pekel` or `run_gee` set to
+TRUE (non-default configuration) will take multiple days, mostly because of the
+bottleneck at GEE: Only \~10 tasks are cued at any given time, and GEE
+determines how many tasks are running at any given time (usually just 1-3 at any
+given time). For local processes we use multiple cores, using {crew} worker
+integration with {targets} wherever possible to increase efficiency. This
+workflow currently uses n-1 cores as detected by the {parallel} package.
+However, GEE steps can not be run using multi-core processes since the
+processing (and bottleneck) is not local.
+
+This code chunk will inform you of how many cores are available on your
+computer:
+
+```{r}
+parallel::detectCores()
+```
+
+And this code chunk will run the pipeline:
 
 ```{r run_targets, echo = F}
 library(targets)
 
-# for the purposes of this document, we comment out the following lines, as they may take a long time to run depending on configuration settings. 
+# for the purposes of this document, we comment out the following lines, as they may take a long time to run depending on configuration settings. Double check configuration before proceeding. 
 
 # tar_make()
 
