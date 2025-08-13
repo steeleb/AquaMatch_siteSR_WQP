@@ -124,7 +124,7 @@ d_qa_stack <- list(
     packages = c("data.table", "tidyverse", "arrow", "stringi"),
     deployment = "main" # too big for multicore
   ),
-
+  
   tar_target(
     name = d_collated_Landsat7_by_huc2,
     command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
@@ -138,7 +138,7 @@ d_qa_stack <- list(
     packages = c("data.table", "tidyverse", "arrow", "stringi"),
     deployment = "main" # too big for multicore
   ),
-
+  
   tar_target(
     name = d_collated_Landsat8_by_huc2,
     command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
@@ -152,20 +152,20 @@ d_qa_stack <- list(
     packages = c("data.table", "tidyverse", "arrow", "stringi"),
     deployment = "main" # too big for multicore
   ),
-
+  
   # Landsat 9 is small enough to be a single file.
   tar_target(
     name = d_Landsat9_collated_data,
-  command = sort_qa_Landsat_data(qa_files = d_qa_files_list, 
-                                 gee_identifier = b_yml$run_date,
-                                 mission_info = d_mission_identifiers %>% 
-                                   filter(mission_names == "Landsat 9"),
-                                 site_info = a_sites_with_NHD_info,
-                                 dswe = d_dswe_types),
-  pattern = map(d_dswe_types),
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list, 
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>% 
+                                     filter(mission_names == "Landsat 9"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types),
+    pattern = map(d_dswe_types),
     packages = c("data.table", "tidyverse", "arrow", "stringi")
   ),
-
+  
   # metadata
   tar_target(
     name = d_Landsat_metadata_formatted,
@@ -188,15 +188,17 @@ d_qa_stack <- list(
   tar_target(
     name = d_make_Landsat_feather_files,
     command = {
+      # create version folder for output
       if (!dir.exists(file.path("d_qa_stack/out/", b_yml$run_date))) {
         dir.create(file.path("d_qa_stack/out/", b_yml$run_date))
       }
       
-      # filter for identifier
-      fns  <- d_all_sorted_Landsat_files[grepl(d_mission_identifiers$mission_names, 
+      # filter for identifier/dswe
+      fns  <- d_all_sorted_Landsat_files[grepl(gsub(" ", "", d_mission_identifiers$mission_names),
                                                d_all_sorted_Landsat_files)]
       fns_dswe <- fns[grepl(paste0(d_dswe_types, "_"), fns)]
       
+      # create the output filepath
       out_fp <- paste0("d_qa_stack/out/", 
                        b_yml$run_date, 
                        "/siteSR_", 
@@ -204,39 +206,49 @@ d_qa_stack <- list(
                        "_", d_dswe_types, "_", 
                        b_yml$run_date, ".feather")
       
-      # create a temp directory for the temporary Arrow dataset
-      temp_dataset_dir <- tempfile("arrow_ds_")
-      dir.create(temp_dataset_dir)
-      
-      # these files need to be processed by chunk to deal with memory issues
-      walk(fns_dswe, function(fn) {
-        # read chunk
-        chunk <- read_feather(fn)
+      # check to see if this is a single file, or multiple and needs additional
+      # data handling
+      if (length(fns_dswe > 1)) {
+        # create a temp directory for the temporary Arrow dataset
+        temp_dataset_dir <- tempfile("arrow_ds_")
+        dir.create(temp_dataset_dir)
+        # these files need to be processed by chunk to deal with memory issues
+        walk(fns_dswe, function(fn) {
+          # read chunk
+          chunk <- fread(fn)
+          setDT(chunk)
+          
+          # add source_file column to partition by
+          chunk[, source_file := tools::file_path_sans_ext(basename(fn))]
+          
+          # write chunk using partitioning (otherwise we hit memory issues)
+          write_dataset(chunk,
+                        path = temp_dataset_dir,
+                        format = "feather",
+                        partitioning = "source_file",
+                        existing_data_behavior = "delete_matching")
+        })
         
-        # add source_file column to partition by
-        chunk[, source_file := tools::file_path_sans_ext(basename(fn))]
+        # connect to the arrow-partitioned file
+        ds <- open_dataset(temp_dataset_dir, format = "feather")
         
-        # write chunk using partitioning (otherwise we hit memory issues)
-        write_dataset(chunk,
-                      path = temp_dataset_dir,
-                      format = "feather",
-                      partitioning = "source_file",
-                      existing_data_behavior = "delete_matching")
-      })
-      
-      # connect to the arrow-partitioned file
-      ds <- open_dataset(temp_dataset_dir, format = "feather")
-      
-      # and grab all the data and write the feather file
-      ds %>% 
-        collect() %>% 
-        select(-source_file) %>% 
-        write_feather(., out_fp, compression = "lz4")
-      
-      # housekeeping
-      unlink(temp_dataset_dir, recursive = TRUE)
-      gc()
-      Sys.sleep(5)
+        # and grab all the data and write the feather file
+        ds %>% 
+          collect() %>% 
+          select(-source_file) %>% 
+          write_feather(., out_fp, compression = "lz4")
+        
+        # housekeeping
+        unlink(temp_dataset_dir, recursive = TRUE)
+        gc()
+        Sys.sleep(5)
+        
+      } else {
+        
+        data <- fread(fn)
+        write_feather(data, out_fp, compression = "lz4")
+        
+      }
       
       # return filepath
       out_fp
@@ -290,11 +302,8 @@ if (config::get(config = general_config)$update_and_share) {
     tar_target(
       name = d_save_siteSR_drive_info,
       command = {
-        drive_ids_site <- d_send_siteSR_files_to_drive %>% 
-          select(name, id)
-        drive_ids_meta <- d_send_metadata_files_to_drive %>% 
-          select(name, id)
-        drive_ids <- bind_rows(drive_ids_site, drive_ids_meta) 
+        drive_ids <- d_send_siteSR_files_to_drive %>% 
+          select(name, id) 
         write_csv(drive_ids,
                   paste0("d_qa_stack/out/siteSR_qa_files_drive_ids_v",
                          b_yml$run_date,

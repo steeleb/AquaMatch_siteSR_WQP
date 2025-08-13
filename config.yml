@@ -5,7 +5,7 @@
 default:
   
   # gmail account to associate with {googledrive}
-  google_email: "therossyndicate@gmail.com"
+  google_email: ""
   
   # location where you want to store the output of the pipeline, required if any of
   # `update_and_share`, `compile_locations`, `run_pekel`, or `run_GEE` is set to TRUE
