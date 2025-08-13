@@ -9,10 +9,10 @@ default:
   
   # location where you want to store the output of the pipeline, required if any of
   # `update_and_share`, `compile_locations`, `run_pekel`, or `run_GEE` is set to TRUE
-  drive_project_folder: "~/aquamatch_siteSR_wqp/" # note: must start with "~/" and end with "/"
+  drive_project_folder: "~/aquamatch_siteSR/" # note: must start with "~/" and end with "/"
   
   # should pipeline perform new site collation for all WQP/NWIS surface water sites?
-  # FALSE = use pre-existing collated sites
+  # FALSE (default) = use pre-existing collated sites
   # TRUE = re-collate data in the -a- group
   compile_locations: FALSE
   
@@ -21,7 +21,7 @@ default:
   
   # should the pekel visibility step be run? (requires GEE authentication and
   # update of the `gee_config.yml` file)
-  # FALSE = use pre-pulled pekel summary stats
+  # FALSE (default) = use pre-pulled pekel summary stats
   # TRUE = re-pull pekel summary stats in the -b- group
   # if set to TRUE, run_GEE must also be TRUE
   run_pekel: FALSE 
@@ -29,14 +29,14 @@ default:
   # should the GEE workflow to obtain remote sensing summaries (-c- group) be run? 
   # (if you set `run_pekel` to TRUE and have made changes to that process, 
   # also set `run_GEE` to TRUE. requires GEE authentication and update of the 
-  # `gee_config.yml` file)
+  # `gee_config.yml` file). Default configuration: FALSE.
   run_GEE: FALSE
   
   # date of stored pekel/gee version (if `run_pekel` and `run_GEE` set to false)
   pekel_gee_version: "2025-06-06" 
   
   # should the pipeline 'export' and 'share' siteSR files? 
-  # FALSE = files are collated locally, but not uploaded to Google Drive
+  # FALSE (default) = files are collated locally, but not uploaded to Google Drive
   # TRUE = files are collated locall AND uploaded to drive. 
   # TRUE setting requires drive_project_folder designation
   update_and_share: FALSE 

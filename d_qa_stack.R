@@ -51,7 +51,7 @@ d_qa_stack <- list(
     }
   ), 
   
-  tar_target(
+  tar_files(
     name = d_metadata_files,
     command = c_collated_siteSR_files %>% 
       .[grepl("metadata", .)]
@@ -73,7 +73,7 @@ d_qa_stack <- list(
   ),
   
   # now add siteSR id, and necessary information for data storage, save as .csv
-  tar_target(
+  tar_files(
     name = d_qa_files_list,
     command = {
       d_qa_Landsat_files
@@ -82,8 +82,7 @@ d_qa_stack <- list(
                  pattern = ".feather") %>% 
         # make sure gee version is right
         .[grepl(paste0(b_yml$run_date, "_filtered"), .)]
-    },
-    cue = tar_cue("always")
+    }
   ),
   
   # create a list of HUC2's to map over
@@ -178,7 +177,7 @@ d_qa_stack <- list(
   ),
   
   # make a list of the collated and sorted files created
-  tar_target(
+  tar_files(
     name = d_all_sorted_Landsat_files,
     command = as.vector(c(d_Landsat4_collated_data, d_collated_Landsat5_by_huc2,
                           d_collated_Landsat7_by_huc2, d_collated_Landsat8_by_huc2,
