@@ -51,7 +51,7 @@ d_qa_stack <- list(
     }
   ), 
   
-  tar_target(
+  tar_files(
     name = d_metadata_files,
     command = c_collated_siteSR_files %>% 
       .[grepl("metadata", .)]
@@ -73,45 +73,131 @@ d_qa_stack <- list(
   ),
   
   # now add siteSR id, and necessary information for data storage, save as .csv
-  tar_target(
+  tar_files(
     name = d_qa_files_list,
     command = {
       d_qa_Landsat_files
       list.files("d_qa_stack/qa/", 
                  full.names = TRUE,
-                 pattern = ".feather")
-    },
-    cue = tar_cue("always")
+                 pattern = ".feather") %>% 
+        # make sure gee version is right
+        .[grepl(paste0(b_yml$run_date, "_filtered"), .)]
+    }
+  ),
+  
+  # create a list of HUC2's to map over
+  tar_target(
+    name = d_unique_huc2,
+    command = {
+      a_sites_with_NHD_info %>%
+        filter(siteSR_id %in% b_visible_sites$id) %>%
+        distinct(huc2 = str_sub(assigned_HUC, 1, 2)) %>%
+        pull(huc2)
+    }
+  ),
+  
+  # Landsat 4 is small enough for a single file
+  tar_target(
+    name = d_Landsat4_collated_data,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list, 
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>% 
+                                     filter(mission_names == "Landsat 4"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types),
+    pattern = map(d_dswe_types),
+    packages = c("data.table", "tidyverse", "arrow", "stringi")
+  ),
+  
+  # Landsat 5, 7, 8 need to be separated by HUC2
+  tar_target(
+    name = d_collated_Landsat5_by_huc2,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>%
+                                     filter(mission_names == "Landsat 5"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types,
+                                   HUC2 = d_unique_huc2),
+    pattern = cross(d_dswe_types, d_unique_huc2),
+    packages = c("data.table", "tidyverse", "arrow", "stringi"),
+    deployment = "main" # too big for multicore
   ),
   
   tar_target(
-    name = d_Landsat_files_for_export,
-    command = prep_Landsat_for_export(file = d_qa_files_list,
-                                      file_type = "csv",
-                                      out_path = "d_qa_stack/export/"),
-    pattern = map(d_qa_files_list),
-    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi"),
-    deployment = "main"
+    name = d_collated_Landsat7_by_huc2,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>%
+                                     filter(mission_names == "Landsat 7"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types,
+                                   HUC2 = d_unique_huc2),
+    pattern = cross(d_dswe_types, d_unique_huc2),
+    packages = c("data.table", "tidyverse", "arrow", "stringi"),
+    deployment = "main" # too big for multicore
   ),
   
   tar_target(
-    name = d_Landsat_metadata_for_export,
-    command = prep_Landsat_for_export(file = d_metadata_files,
-                                      file_type = "csv", 
-                                      out_path = "d_qa_stack/export/"),
+    name = d_collated_Landsat8_by_huc2,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list,
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>%
+                                     filter(mission_names == "Landsat 8"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types,
+                                   HUC2 = d_unique_huc2),
+    pattern = cross(d_dswe_types, d_unique_huc2),
+    packages = c("data.table", "tidyverse", "arrow", "stringi"),
+    deployment = "main" # too big for multicore
+  ),
+  
+  # Landsat 9 is small enough to be a single file.
+  tar_target(
+    name = d_Landsat9_collated_data,
+    command = sort_qa_Landsat_data(qa_files = d_qa_files_list, 
+                                   gee_identifier = b_yml$run_date,
+                                   mission_info = d_mission_identifiers %>% 
+                                     filter(mission_names == "Landsat 9"),
+                                   site_info = a_sites_with_NHD_info,
+                                   dswe = d_dswe_types),
+    pattern = map(d_dswe_types),
+    packages = c("data.table", "tidyverse", "arrow", "stringi")
+  ),
+  
+  # metadata
+  tar_target(
+    name = d_Landsat_metadata_formatted,
+    command = prep_LS_metadata_for_export(file = d_metadata_files,
+                                          file_type = "csv",
+                                          gee_identifier = b_yml$run_date,
+                                          out_path = "d_qa_stack/export"),
     pattern = map(d_metadata_files),
-    packages = c("arrow", "data.table", "tidyverse", "tools", "stringi")
+    packages = c("data.table", "tidyverse", "arrow", "stringi")
+  ),
+  
+  # make a list of the collated and sorted files created
+  tar_files(
+    name = d_all_sorted_Landsat_files,
+    command = as.vector(c(d_Landsat4_collated_data, d_collated_Landsat5_by_huc2,
+                          d_collated_Landsat7_by_huc2, d_collated_Landsat8_by_huc2,
+                          d_Landsat9_collated_data, d_Landsat_metadata_formatted))
   ),
   
   tar_target(
     name = d_make_Landsat_feather_files,
     command = {
+      # create version folder for output
       if (!dir.exists(file.path("d_qa_stack/out/", b_yml$run_date))) {
         dir.create(file.path("d_qa_stack/out/", b_yml$run_date))
       }
-      fns  <- d_qa_files_list[grepl(d_mission_identifiers$mission_id, d_qa_files_list)]
+      
+      # filter for identifier/dswe
+      fns  <- d_all_sorted_Landsat_files[grepl(gsub(" ", "", d_mission_identifiers$mission_names),
+                                               d_all_sorted_Landsat_files)]
       fns_dswe <- fns[grepl(paste0(d_dswe_types, "_"), fns)]
       
+      # create the output filepath
       out_fp <- paste0("d_qa_stack/out/", 
                        b_yml$run_date, 
                        "/siteSR_", 
@@ -119,39 +205,49 @@ d_qa_stack <- list(
                        "_", d_dswe_types, "_", 
                        b_yml$run_date, ".feather")
       
-      # create a temp directory for the temporary Arrow dataset
-      temp_dataset_dir <- tempfile("arrow_ds_")
-      dir.create(temp_dataset_dir)
-      
-      # these files need to be processed by chunk to deal with memory issues
-      walk(fns_dswe, function(fn) {
-        # read chunk
-        chunk <- read_feather(fn)
+      # check to see if this is a single file, or multiple and needs additional
+      # data handling
+      if (length(fns_dswe > 1)) {
+        # create a temp directory for the temporary Arrow dataset
+        temp_dataset_dir <- tempfile("arrow_ds_")
+        dir.create(temp_dataset_dir)
+        # these files need to be processed by chunk to deal with memory issues
+        walk(fns_dswe, function(fn) {
+          # read chunk
+          chunk <- fread(fn)
+          setDT(chunk)
+          
+          # add source_file column to partition by
+          chunk[, source_file := tools::file_path_sans_ext(basename(fn))]
+          
+          # write chunk using partitioning (otherwise we hit memory issues)
+          write_dataset(chunk,
+                        path = temp_dataset_dir,
+                        format = "feather",
+                        partitioning = "source_file",
+                        existing_data_behavior = "delete_matching")
+        })
         
-        # add source_file column to partition by
-        chunk[, source_file := tools::file_path_sans_ext(basename(fn))]
+        # connect to the arrow-partitioned file
+        ds <- open_dataset(temp_dataset_dir, format = "feather")
         
-        # write chunk using partitioning (otherwise we hit memory issues)
-        write_dataset(chunk,
-                      path = temp_dataset_dir,
-                      format = "feather",
-                      partitioning = "source_file",
-                      existing_data_behavior = "delete_matching")
-      })
-      
-      # connect to the arrow-partitioned file
-      ds <- open_dataset(temp_dataset_dir, format = "feather")
-      
-      # and grab all the data and write the feather file
-      ds %>% 
-        collect() %>% 
-        select(-source_file) %>% 
-        write_feather(., out_fp, compression = "lz4")
-      
-      # housekeeping
-      unlink(temp_dataset_dir, recursive = TRUE)
-      gc()
-      Sys.sleep(5)
+        # and grab all the data and write the feather file
+        ds %>% 
+          collect() %>% 
+          select(-source_file) %>% 
+          write_feather(., out_fp, compression = "lz4")
+        
+        # housekeeping
+        unlink(temp_dataset_dir, recursive = TRUE)
+        gc()
+        Sys.sleep(5)
+        
+      } else {
+        
+        data <- fread(fn)
+        write_feather(data, out_fp, compression = "lz4")
+        
+      }
       
       # return filepath
       out_fp
@@ -194,32 +290,19 @@ if (config::get(config = general_config)$update_and_share) {
     
     tar_target(
       name = d_send_siteSR_files_to_drive,
-      command = export_single_file(file_path = d_Landsat_files_for_export,
+      command = export_single_file(file_path = d_all_sorted_Landsat_files,
                                    drive_path = d_check_Drive_siteSR_folder,
                                    google_email = siteSR_config$google_email),
       packages = c("tidyverse", "googledrive"),
-      pattern = map(d_Landsat_files_for_export),
-      cue = tar_cue("always")
-    ),
-    
-    tar_target(
-      name = d_send_metadata_files_to_drive,
-      command = export_single_file(file_path = d_Landsat_metadata_for_export,
-                                   drive_path = d_check_Drive_siteSR_folder,
-                                   google_email = siteSR_config$google_email),
-      packages = c("tidyverse", "googledrive"),
-      pattern = map(d_Landsat_metadata_for_export),
+      pattern = map(d_all_sorted_Landsat_files),
       cue = tar_cue("always")
     ),
     
     tar_target(
       name = d_save_siteSR_drive_info,
       command = {
-        drive_ids_site <- d_send_siteSR_files_to_drive %>% 
-          select(name, id)
-        drive_ids_meta <- d_send_metadata_files_to_drive %>% 
-          select(name, id)
-        drive_ids <- bind_rows(drive_ids_site, drive_ids_meta) 
+        drive_ids <- d_send_siteSR_files_to_drive %>% 
+          select(name, id) 
         write_csv(drive_ids,
                   paste0("d_qa_stack/out/siteSR_qa_files_drive_ids_v",
                          b_yml$run_date,
