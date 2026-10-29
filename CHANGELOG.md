@@ -10,6 +10,20 @@ The bookdown that documents this workflow is in the
 ## [Unreleased]
 
 ### Added
+- **One combined Earth Engine export per mission group and chunk** summarizes all
+  configured DSWE variants (`DSWEcombo1-1a`, etc.), aligned with the lakeSR pull
+  (`c_siteSR_stack/py/run_siteSR_per_pathrow.py`). Downloaded files are split
+  into per-variant files by the new `c_siteSR_stack/src/split_combined_dswe.R`
+  (target `c_split_combined_files`) before collation. Locations are sorted
+  spatially before chunking, the hillshadow neighborhood is 100 pixels, the
+  LS89 aerosol band is no longer used to screen for unrealistic values, and
+  scene-level cloud filtering follows the `cloud_filter` config setting.
+  Optional overrides to run outside of {targets}: `SITESR_YML_CSV`,
+  `SITESR_PATHROW_FILE`.
+- `python/pySetup.R` rewritten (from lakeSR) so a missing or empty `env/` is
+  actually (re)built; Python 3.12 with pinned `earthengine-api`, `pandas`,
+  `numpy`, `pyyaml` versions; dropped the unused `pyreadr`.
+
 - **Sites with overlapping buffers are grouped before Earth Engine extraction**
   to reduce redundant EECU use (new `c_siteSR_stack/src/cluster_sites_for_GEE.R`;
   new targets `c_site_crosswalk` and `c_extraction_sites` in
@@ -115,6 +129,12 @@ The bookdown that documents this workflow is in the
   changes; the bookdown values will update once the siteSR data are re-run.
 
 ### Fixed
+- **UTM EPSG code was wrong for Alaska and Hawaii** in
+  `c_siteSR_stack/src/check_if_fully_within_pr.R`: the code was built as
+  `paste0("EPSG:326", zone)`, so UTM zones 1-9 were projected to
+  EPSG:3261-3269, which are not UTM zones, and the site buffer was drawn in
+  the wrong CRS when checking containment in the path-row. It is now
+  `32600 + zone` (`32700 + zone` in the southern hemisphere).
 - **Unclosed double quotes in the site list failed EDI requirements** (#45):
   `clean_text_fields()` now removes double quotes and control characters from
   `org_id`, `loc_id`, and `MonitoringLocationTypeName` when sites are collated

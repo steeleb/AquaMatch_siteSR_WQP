@@ -226,6 +226,19 @@ if (config::get(config = general_config)$run_GEE) {
       pattern = map(c_data_segments)
     ),
     
+    # the GEE pull exports one site file per mission group and chunk with all
+    # DSWE variants ("_DSWEcombo"); split these into one file per DSWE variant
+    # (in the same folder), which are what is collated below
+    tar_target(
+      name = c_split_combined_files,
+      command = split_combined_dswe_files(
+        directory = file.path("c_siteSR_stack/down", b_yml$run_date, c_mission_groups),
+        depends = c_download_files),
+      packages = c("tidyverse", "data.table"),
+      pattern = map(c_mission_groups),
+      deployment = "main"
+    ),
+    
     # collate all files - these end up being pretty big without filtering, so we 
     # need to break them up as metadata, then site pulls. The site pulls also need
     # to be split by dswe type and mission, otherwise the files are too big for R
@@ -256,7 +269,7 @@ if (config::get(config = general_config)$run_GEE) {
                                         WRS_prefix = c_WRS_prefix,
                                         dswe = c_dswe_types,
                                         separate_missions = TRUE,
-                                        depends = c_download_files),
+                                        depends = c_split_combined_files),
       packages = c("data.table", "tidyverse", "arrow"),
       pattern = cross(c_mission_groups, c_dswe_types, c_WRS_prefix),
       deployment = "main"

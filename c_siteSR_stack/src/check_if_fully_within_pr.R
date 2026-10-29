@@ -59,12 +59,10 @@ check_if_fully_within_pr <- function(WRS_pathrow, locations, yml) {
   mean_x <- mean(coord_for_UTM[,1])
   mean_y <- mean(coord_for_UTM[,2])
   # calculate the UTM zone using the mean value of Longitude for the polygon
-  utm_suffix <- as.character(ceiling((mean_x + 180) / 6))
+  utm_zone <- floor((mean_x + 180) / 6) + 1
   utm_code <- if_else(mean_y >= 0,
-                      # EPSG prefix for N hemisphere
-                      paste0('EPSG:326', utm_suffix),
-                      # for S hemisphere
-                      paste0('EPSG:327', utm_suffix))
+                      32600 + utm_zone, # EPSG prefix for N hemisphere
+                      32700 + utm_zone) # for S hemisphere
   # transform points and wrs to UTM
   wrs <- st_transform(wrs, 
                       crs = utm_code) %>% 
