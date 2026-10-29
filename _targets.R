@@ -7,13 +7,23 @@ library(crew)
 
 # Set general configuration setting: -----------------------------
 
-general_config <- "default"
+general_config <- "admin_update"
 
 
 # Set up crew controller for multicore processing ------------------------
 
 controller_cores <- crew_controller_local(
+  name = "cores",
   workers = parallel::detectCores()-1,
+  seconds_idle = 12
+)
+
+# The NHD waterbody/flowline assignment targets read large NHD GeoPackages (up
+# to ~1 million flowlines per HUC4) and can use 5-20 GB each, so they run on a
+# controller with fewer workers to avoid exhausting memory and crashing workers.
+controller_nhd <- crew_controller_local(
+  name = "nhd",
+  workers = 3,
   seconds_idle = 12
 )
 
@@ -26,7 +36,8 @@ tar_option_set(
   memory = "transient",
   garbage_collection = TRUE,
   # set up crew controller
-  controller = controller_cores
+  controller = crew_controller_group(controller_cores, controller_nhd),
+  resources = tar_resources(crew = tar_resources_crew(controller = "cores"))
 )
 
 

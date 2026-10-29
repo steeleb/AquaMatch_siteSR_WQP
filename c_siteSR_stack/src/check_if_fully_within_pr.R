@@ -7,7 +7,7 @@
 #' path row geometry.
 #' 
 #' @param WRS_pathrows list of pathrows to iterate over, output of target `c_WRS_pathrows`
-#' @param locations dataframe of locations, output of target `b_visible_sites`
+#' @param locations dataframe of locations, output of target `c_extraction_sites`
 #' @param yml contents of the reformatted yaml .csv file, output of target `b_yml`
 #' 
 #' @returns tibble of locations that includes WRS2 pathrow if, when buffered, they 

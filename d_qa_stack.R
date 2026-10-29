@@ -7,6 +7,10 @@ tar_source(files = "d_qa_stack/src/")
 
 # Define {targets} workflow -----------------------------------------------
 
+# when the siteSR acquisition is run (run_GEE), only one site per group of 
+# overlapping sites is sent to EE, see c_site_crosswalk
+d_run_GEE <- config::get(config = general_config)$run_GEE
+
 # target objects in workflow
 d_qa_stack <- list(
   
@@ -90,7 +94,7 @@ d_qa_stack <- list(
     name = d_unique_huc2,
     command = {
       a_sites_with_NHD_info %>%
-        filter(siteSR_id %in% b_visible_sites$id) %>%
+        filter(siteSR_id %in% c_extraction_sites$id) %>%
         distinct(huc2 = str_sub(assigned_HUC, 1, 2)) %>%
         pull(huc2)
     }
@@ -181,7 +185,9 @@ d_qa_stack <- list(
     name = d_all_sorted_Landsat_files,
     command = as.vector(c(d_Landsat4_collated_data, d_collated_Landsat5_by_huc2,
                           d_collated_Landsat7_by_huc2, d_collated_Landsat8_by_huc2,
-                          d_Landsat9_collated_data, d_Landsat_metadata_formatted))
+                          d_Landsat9_collated_data, d_Landsat_metadata_formatted,
+                          # crosswalk of siteSR_id to extraction site (run_GEE only)
+                          if (d_run_GEE) d_site_crosswalk_file))
   ),
   
   tar_target(
@@ -258,6 +264,34 @@ d_qa_stack <- list(
   )
   
 )
+
+# when sites were grouped before acquisition, the data are keyed to the site that
+# was sent to EE (`extraction_siteSR_id`). Save the crosswalk from every 
+# RS-visible siteSR_id to its extraction site, along with the flags at the 
+# extraction site, so that the data can be joined to all sites.
+if (d_run_GEE) {
+  
+  d_qa_stack <- list(
+    
+    d_qa_stack,
+    
+    tar_target(
+      name = d_site_crosswalk_file,
+      command = {
+        d_check_dir_structure
+        fp <- file.path("d_qa_stack/export/",
+                        paste0("siteSR_extraction_site_crosswalk_v", 
+                               b_yml$run_date, 
+                               ".csv"))
+        write_csv(c_site_crosswalk, fp)
+        fp
+      },
+      format = "file"
+    )
+    
+  )
+  
+}
 
 # if configuration is to update and share on Drive, add these targets to the d 
 # list

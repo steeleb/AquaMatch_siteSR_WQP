@@ -31,13 +31,13 @@ siteSR relies on a configuration file (`config.yml`) to run specific profiles
 that determine what operations are being run. The file contains two
 configuration profiles: "default" and "admin_update".
 
--   "default" runs the pipeline using publicly-stable versions of datasets from
-    a previously run pipeline. It requires a Google email address to complete
-    the pipeline
+- "default" runs the pipeline using publicly-stable versions of datasets from a
+  previously run pipeline. It requires a Google email address to complete the
+  pipeline
 
--   "admin_update" is intended for use by ROSSyndicate members when updating
-    siteSR datasets, creating publicly-stable versions of siteSR to be stored in
-    the AquaMatch_siteSR repository.
+- "admin_update" is intended for use by ROSSyndicate members when updating
+  siteSR datasets, creating publicly-stable versions of siteSR to be stored in
+  the AquaMatch_siteSR repository.
 
 This pipeline does not apply handoff coefficients between Landsat missions,
 which are imperative for analyzing the data that overlap multiple sensors. See
@@ -65,7 +65,7 @@ them all.
 packages <- c("arrow",
               "config",
               "crew",
-              "nhdplusTools",
+              "hydrogeofetch",
               "polylabelr",
               "reticulate",
               "rmapshaper",

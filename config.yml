@@ -26,6 +26,10 @@ default:
   # if set to TRUE, run_GEE must also be TRUE
   run_pekel: FALSE 
   
+  # when de-duplicating sites, what proportion of the buffered area is required to
+  # consider a site a duplicate of another? The unit for this is percent area.
+  overlap_threshold: 75
+
   # should the GEE workflow to obtain remote sensing summaries (-c- group) be run? 
   # (if you set `run_pekel` to TRUE and have made changes to that process, 
   # also set `run_GEE` to TRUE. requires GEE authentication and update of the 
@@ -45,11 +49,12 @@ default:
 # Update the stable dataset versions, intended to be used by the ROSS team
 admin_update:
   google_email: "therossyndicate@gmail.com"
-  drive_project_folder: "~/aquamatch_siteSR_wqp/"
+  drive_project_folder: "~/aquamatch_siteSR_wqp_2026/"
   compile_locations: TRUE
-  collated_site_version: "2025-06-04" # this will become the date stamp for the new compilation!
+  collated_site_version: "2026-10-26" # this will become the date stamp for the new compilation!
   # note, pekel/gee version date is set in the `gee_config.yml` file
   run_pekel: TRUE
+  overlap_threshold: 75
   run_GEE: TRUE
   update_and_share: TRUE 
 

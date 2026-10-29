@@ -9,7 +9,8 @@
 #' for spatial subsetting
 #' @param huc4 4-digit character string to filter sites by
 #' @param GEE_buffer numeric value of buffer for GEE site extraction in meters
-#' @param huc8_wbd sf object containing staged huc8 objects from TNM
+#' @param HUC4_manifest tibble from `get_bestres_manifest()` with huc4, url, and
+#' etag columns
 #' 
 #' @returns a list containing dataframe of the spatial feature information with 
 #' flowline and distance to flowline assignment as well as a dataframe of the 
@@ -19,7 +20,7 @@
 add_NHD_flowline_to_sites <- function(sites_with_huc, 
                                       huc4,
                                       GEE_buffer,
-                                      huc8_wbd) {
+                                      HUC4_manifest) {
   
   message(paste0("Assigning NHD HR flowlines to sites within ", huc4))
   
@@ -32,92 +33,41 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     # check to make sure there are obs in this huc/group combo, if not, go to next.
     if (nrow(sf_subset) == 0) { return( NULL ) }
     
-    # if huc4 < 1900 (conus points), we can use nhdplustools, otherwise we have to 
-    # download from the national map.
+    # all HUC4s (including those in CONUS) use NHD Best Resolution, downloaded
+    # from The National Map if not already present locally
+    gpkg_path <- download_bestres_gpkg(huc4, HUC4_manifest)
     
-    if (as.numeric(huc4) < 1900) {
-      
-      # get the aoi of the huc for grabbing flowlines
-      huc4_aoi <- get_huc(id = huc4, type = "huc04")
-      
-      if (is.null(huc4_aoi)) {
-        if (st_crs(huc8_wbd) != st_crs(sf_subset)) {
-          sf_subset <- st_transform(sf_subset, st_crs(huc8_wbd))
-        }
-        # filter huc8 by huc4 digits
-        huc4_aoi <- huc8_wbd %>% 
-          filter(grepl(huc4, huc8))
-        # and then make sure that there are no huc8's that we included that we
-        # don't care about
-        huc4_aoi <- huc4_aoi[sf_subset, ] %>% 
-          st_bbox() %>% 
-          st_as_sfc()
-      }
-      
-      # get the flowlines in the huc
-      huc4_fl <- get_nhdplus(AOI = huc4_aoi, realization = "flowline") %>%
-        filter(grepl("stream|river|artificial", ftype, ignore.case = T)) %>% 
-        select(fl_nhd_id = comid, 
-               fl_gnis_id = gnis_id, 
-               fl_gnis_name = gnis_name, 
-               fl_fcode = fcode,
-               fl_stream_order = streamorde) %>%
-        # add column to merge after st_intersects()
-        rowid_to_column("fl_id") %>% 
-        mutate(fl_nhd_source = "NHDPlusv2",
-               fl_nhd_id = as.character(fl_nhd_id))
-      
-    } else {
-      
-      # if huc4 >= 1900, process differently, as nhdtools fl is limited to CONUS
-      
-      # make sure the geopackage hasn't already been downloaded
-      if (!file.exists(file.path("a_compile_sites/nhd/",
-                                 paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")))) {
-        
-        # but if it isn't, download it!
-        
-        # set timeout so that... this doesn't timeout
-        options(timeout = 60000)
-        
-        # url for the NHD Best Resolution for HUC4
-        url = paste0("https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/HU4/GPKG/NHD_H_", huc4, "_HU4_GPKG.zip")
-        download.file(url, destfile = file.path("a_compile_sites/nhd/", 
-                                                paste0(huc4, ".zip")))
-        
-        unzip(file.path("a_compile_sites/nhd/", 
-                        paste0(huc4, ".zip")), 
-              exdir = "a_compile_sites/nhd/")
-        
-        # remove zip
-        unlink(file.path("a_compile_sites/nhd/", 
-                         paste0(huc4, ".zip")))
-      }
-      
-      # open the NHD flowline layer, coerce to a {sf} object
-      huc4_fl <- st_read(file.path("a_compile_sites/nhd/",
-                                   paste0("NHD_H_", huc4, "_HU4_GPKG.gpkg")),
-                         layer = "NHDFlowline") %>% 
-        # only grab stream/river and artificial path
-        # 556 = coastline, 428 = pipeline, 336 = canal/ditch
-        # 460 = stream/river, 468 = drainageway, 558 = artificial path (in waterbody),
-        # 420 = underground conduit, 334 = connector
-        filter(ftype %in% c(336, 460, 558)) %>% 
-        select(fl_nhd_id = permanent_identifier, 
-               fl_gnis_id = gnis_id, 
-               fl_gnis_name = gnis_name, 
-               fl_fcode = fcode) %>% 
-        rowid_to_column("fl_id") %>% 
-        mutate(fl_nhd_source = "NHDBestRes",
-               fl_stream_order = NA, # add this column in for binding, no streamorder
-               # in best res
-               fl_nhd_id = as.character(fl_nhd_id))
-    }
+    # open the NHD flowline layer, coerce to a {sf} object
+    # only grab stream/river, canal/ditch and artificial path
+    # 556 = coastline, 428 = pipeline, 336 = canal/ditch
+    # 460 = stream/river, 468 = drainageway, 558 = artificial path (in waterbody),
+    # 420 = underground conduit, 334 = connector
+    # filter in the query - some HUC4s have > 1 million flowlines, so reading 
+    # only the needed rows is much faster
+    huc4_fl <- st_read(gpkg_path, 
+                       # (SELECT * since the geometry column name differs between files)
+                       query = "SELECT * FROM NHDFlowline WHERE ftype IN (336, 460, 558)",
+                       quiet = TRUE) %>% 
+      # drop Z/M dimensions, which aren't needed
+      st_zm() %>% 
+      select(fl_nhd_id = permanent_identifier, 
+             fl_gnis_id = gnis_id, 
+             fl_gnis_name = gnis_name, 
+             fl_fcode = fcode) %>% 
+      rowid_to_column("fl_id") %>% 
+      mutate(fl_nhd_source = "NHDBestRes",
+             fl_stream_order = NA, # add this column in for binding, no streamorder
+             # in best res
+             fl_nhd_id = as.character(fl_nhd_id))
     
     # per usual, make sure geo is valid
     # try to make valid polygons 
-    huc4_fl <- huc4_fl %>% 
-      st_make_valid()
+    # (only repairing the invalid features, since checking is much faster than
+    # repairing all of the features)
+    not_valid <- which(!st_is_valid(huc4_fl))
+    if (length(not_valid) > 0) {
+      st_geometry(huc4_fl)[not_valid] <- st_geometry(st_make_valid(huc4_fl[not_valid, ]))
+    }
     
     # pull out geometries that are still invalid, if any
     invalid <- huc4_fl[!st_is_valid(huc4_fl), ]
@@ -138,13 +88,13 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       }
     }
     
-    # NHD Best res is often in other crs (NAD83), so the points need to be converted if 
-    # the flowlines are.
-    
-    if (st_crs(huc4_fl) != st_crs(sf_subset)) {
-      sf_subset <- sf_subset %>% 
-        st_transform(crs = st_crs(huc4_fl))
-    }
+    # work in a local UTM zone using planar geometry (see set_local_utm())
+    s2_state <- sf_use_s2()
+    on.exit(sf_use_s2(s2_state), add = TRUE)
+    sf_use_s2(FALSE)
+    local <- set_local_utm(sf_subset, huc4_fl)
+    sf_subset <- local$points
+    huc4_fl <- local$features
     
     # walk through all of the sites and calculate how many flowlines they
     # intersect with given the buffer for GEE extraction. this assumes that the
@@ -162,14 +112,13 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     
     # Here, we will just grab the closest flowline and the distance to that 
     # flowline. For each of them, arrange by fl_id for proper st_distance measure.
+    nearest_idx <- st_nearest_feature(sf_subset, huc4_fl)
     matched <- sf_subset %>%
-      mutate(fl_id = st_nearest_feature(., huc4_fl)) %>%
-      left_join(., huc4_fl %>% st_drop_geometry()) %>%
-      arrange(fl_id)
+      mutate(fl_id = huc4_fl$fl_id[nearest_idx]) %>%
+      left_join(., huc4_fl %>% st_drop_geometry())
     
-    nearest_fl <- huc4_fl[matched$fl_id, ]
     matched <- matched %>%
-      mutate(dist_to_fl = as.numeric(st_distance(., nearest_fl, by_element = TRUE)),
+      mutate(dist_to_fl = distance_to_nearest_feature(., huc4_fl, nearest_idx),
              # for river/stream sites: if the distance to the flowline is > 500m, 
              # recode all the flowline info 
              # for lake/res sites: the distance can be retained, since the distance 

@@ -34,10 +34,38 @@ if (config::get(config = general_config)$run_GEE) {
       cue = tar_cue("always")
     ),
     
-    # save the output of RS-visible sites to this directory
+    # reduce redundant EE compute: group RS-visible sites that are attributed to 
+    # the same waterbody/flowline (or site type) and whose buffers overlap by
+    # >= `overlap_threshold` (config.yml, 75% by default) for every pair of sites 
+    # in the group, see cluster_sites_for_GEE().
+    # This is a crosswalk of every visible site to the site that is sent to EE.
+    tar_target(
+      name = c_site_crosswalk,
+      command = cluster_sites_for_GEE(sites = b_visible_sites,
+                                      site_info = a_sites_with_NHD_info,
+                                      buffer = b_yml$site_buffer,
+                                      # `overlap_threshold` in config.yml is a 
+                                      # percent, default to 75
+                                      min_overlap = if (is.null(siteSR_config$overlap_threshold)) {
+                                        0.75
+                                      } else {
+                                        siteSR_config$overlap_threshold / 100
+                                      }),
+      packages = c("tidyverse", "sf", "RANN")
+    ),
+    
+    # the sites that are sent to EE: one site per group, with the same columns 
+    # as b_visible_sites
+    tar_target(
+      name = c_extraction_sites,
+      command = b_visible_sites %>% 
+        filter(id %in% c_site_crosswalk$extraction_siteSR_id)
+    ),
+    
+    # save the sites to be sent to EE to this directory
     tar_target(
       name = c_store_visible_sites_for_GEE,
-      command = write_csv(b_visible_sites, "c_siteSR_stack/run/visible_locs_with_WRS.csv")
+      command = write_csv(c_extraction_sites, "c_siteSR_stack/run/visible_locs_with_WRS.csv")
     ),
     
     # Check for GEE export subfolder, create if not present
@@ -66,7 +94,7 @@ if (config::get(config = general_config)$run_GEE) {
       name = c_WRS_pathrows,
       command = get_WRS_pathrows(detection_method = "site", 
                                  yaml = b_yml, 
-                                 locs = b_visible_sites,
+                                 locs = c_extraction_sites,
                                  out_folder = "c_siteSR_stack/out/"),
       packages = c("readr", "sf"),
     ),
@@ -76,7 +104,7 @@ if (config::get(config = general_config)$run_GEE) {
     tar_target(
       name = c_siteSR_locs_filtered,
       command = check_if_fully_within_pr(WRS_pathrow = c_WRS_pathrows, 
-                                         locations = b_visible_sites, 
+                                         locations = c_extraction_sites, 
                                          yml = b_yml),
       pattern = map(c_WRS_pathrows),
       packages = c("tidyverse", "sf", "arrow")
@@ -316,6 +344,12 @@ if (config::get(config = general_config)$run_GEE) {
         })
       },
       cue = tar_cue("always")
+    ),
+    
+    # the previously-collated siteSR files were acquired for all RS-visible sites
+    tar_target(
+      name = c_extraction_sites,
+      command = b_visible_sites
     ),
     
     tar_file_read(

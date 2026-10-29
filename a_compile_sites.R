@@ -65,7 +65,9 @@ if (config::get(config = general_config)$compile_locations) {
       name = a_harmonized_WQP_sites,
       command = {
         # use function to harmonize across all CRS
-        harmonized_crs <- harmonize_crs(sites = a_WQP_site_metadata)
+        harmonized_crs <- harmonize_crs(sites = a_WQP_site_metadata %>% 
+                                          filter(!is.na(LatitudeMeasure) & 
+                                                   !is.na(LongitudeMeasure)))
         # return sf, with only applicable columns
         harmonized_crs  %>% 
           select(org_id = OrganizationIdentifier, loc_id = MonitoringLocationIdentifier,
@@ -85,6 +87,7 @@ if (config::get(config = general_config)$compile_locations) {
       command = {
         # create sf and transform to WGS84
         to_wgs84 <- a_NWIS_site_metadata %>% 
+          filter(!is.na("dec_long_va") & !is.na("dec_lat_va")) %>% 
           st_as_sf(coords = c("dec_long_va", "dec_lat_va"),
                    crs = "EPSG:4269",
                    remove = FALSE) %>%
@@ -132,8 +135,19 @@ if (config::get(config = general_config)$compile_locations) {
       command = "a_compile_sites/in/tss_drive_ids.csv",
       read = read_csv(!!.x)
     ),
+    tar_file_read(
+      name = a_AquaMatch_cdom_drive_ids,
+      command = "a_compile_sites/in/cdom_drive_ids.csv",
+      read = read_csv(!!.x)
+    ),
+    tar_file_read(
+      name = a_AquaMatch_wc_drive_ids,
+      command = "a_compile_sites/in/wc_drive_ids.csv",
+      read = read_csv(!!.x)
+    ),
     
     # retrieve site targets
+    ## chlorophyll-a
     tar_target(
       name = a_AquaMatch_chla_sites,
       command = {
@@ -148,6 +162,22 @@ if (config::get(config = general_config)$compile_locations) {
       }, 
       packages = c("tidyverse", "googledrive")
     ),
+    ## colored dissolved organic matter
+    tar_target(
+      name = a_AquaMatch_cdom_sites,
+      command = {
+        a_check_dir_structure
+        retrieve_target(target = "p3_cdom_harmonized_site_info", 
+                        id_df = a_AquaMatch_cdom_drive_ids,
+                        local_folder = "a_compile_sites/mid/", 
+                        google_email = siteSR_config$google_email, 
+                        file_type = "rds",
+                        date_stamp = "20251211") %>% 
+          filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
+      },
+      packages = c("tidyverse", "googledrive")
+    ),
+    ## dissolved organic carbon
     tar_target(
       name = a_AquaMatch_doc_sites,
       command = {
@@ -162,6 +192,7 @@ if (config::get(config = general_config)$compile_locations) {
       },
       packages = c("tidyverse", "googledrive")
     ),
+    ## secchi disc depth
     tar_target(
       name = a_AquaMatch_sdd_sites,
       command = {
@@ -176,7 +207,7 @@ if (config::get(config = general_config)$compile_locations) {
       }, 
       packages = c("tidyverse", "googledrive")
     ),
-    ## TSS 
+    ## total suspended solids
     tar_target(
       name = a_AquaMatch_tss_sites,
       command = {
@@ -191,15 +222,32 @@ if (config::get(config = general_config)$compile_locations) {
       }, 
       packages = c("tidyverse", "googledrive")
     ),
-    
+    ## water color
+    tar_target(
+      name = a_AquaMatch_wc_sites,
+      command = {
+        a_check_dir_structure
+        retrieve_target(target = "p3_wc_harmonized_site_info", 
+                        id_df = a_AquaMatch_wc_drive_ids,
+                        local_folder = "a_compile_sites/mid/", 
+                        google_email = siteSR_config$google_email, 
+                        file_type = "rds",
+                        date_stamp = "20260617") %>% 
+          filter(!MonitoringLocationIdentifier %in% a_WQP_site_metadata$MonitoringLocationIdentifier)
+      }, 
+      packages = c("tidyverse", "googledrive")
+    ),
+
     # collate and get unique sites for AquaMatch
     tar_target(
       name = a_AquaMatch_sites,
       command = {
-        site_list <- reduce(list(a_AquaMatch_chla_sites,
+        site_list <- reduce(list(a_AquaMatch_cdom_sites,
+                                 a_AquaMatch_chla_sites,
                                  a_AquaMatch_doc_sites,
                                  a_AquaMatch_sdd_sites,
-                                 a_AquaMatch_tss_sites),
+                                 a_AquaMatch_tss_sites,
+                                 a_AquaMatch_wc_sites),
                             bind_rows) 
         # harmonize crs, select only the columns we care about and 
         harmonize_crs(site_list) %>% 
@@ -232,6 +280,11 @@ if (config::get(config = general_config)$compile_locations) {
                                                   MonitoringLocationTypeName == "Estuary" ~ "Estuary",
                                                   grepl("canal|ditch", MonitoringLocationTypeName, ignore.case = T) ~ "Ditch/Canal",
                                                   .default = "Other")]
+        # remove characters that cause issues in csv files (e.g. unclosed double
+        # quotes in the location identifier), then drop any rows that are now
+        # duplicates of another row
+        sites <- clean_text_fields(sites, cols = c("org_id", "loc_id", "MonitoringLocationTypeName")) %>% 
+          distinct(across(-siteSR_id), .keep_all = TRUE)
         sites %>% 
           relocate(siteSR_id, org_id, loc_id, harmonized_site_type, WGS84_Latitude, WGS84_Longitude, source, HUCEightDigitCode) %>% 
           filter(WGS84_Latitude != 0 & WGS84_Longitude != 0 & abs(WGS84_Latitude) != 1 & abs(WGS84_Longitude) != 1) %>% 
@@ -294,14 +347,14 @@ if (config::get(config = general_config)$compile_locations) {
     # Nearly all WQP sites have a HUC8 reported in the `HUCEightDigitCode` field, 
     # but a few need it assigned (or are assigned incorrectly), as do all of the NWIS sites
     # this step also adds a flag to gap-filled HUC8 fields:
-    # 0 = HUC8 reported in WQP site information, matches nhdplusTools assignment
-    # 1 = HUC8 successfully assigned using nhdplusTools, no HUC8 reported in 
+    # 0 = HUC8 reported in WQP site information, matches hydrogeofetch assignment
+    # 1 = HUC8 successfully assigned using hydrogeofetch, no HUC8 reported in 
     # HUCEightDigitCode
     # 2 = HUC8 mismatch between Water Quality Portal HUCEightDigitCode assignment 
-    # and nhdplusTools assignment
+    # and hydrogeofetch assignment
     # 3 = HUCEightDigitCode was assigned to a site type of estuary, but not able 
-    # to be assigned using the nhdplusTools method
-    # 4 = HUC8 unable to be assigned for site location using the nhdplusTools 
+    # to be assigned using the hydrogeofetch method
+    # 4 = HUC8 unable to be assigned for site location using the hydrogeofetch 
     # method and was not provided by WQP/NWIS site information
     
     # first step is to download the staged wbd dataset, since pinging the NHD API
@@ -320,7 +373,7 @@ if (config::get(config = general_config)$compile_locations) {
                 layer = "WBDHU8") %>% 
           st_make_valid()
       },
-      packages = c("nhdplusTools", "sf")
+      packages = c("hydrogeofetch", "sf", "tidyverse")
     ),
     
     tar_target(
@@ -338,7 +391,7 @@ if (config::get(config = general_config)$compile_locations) {
       },
       pattern = map(a_grouped_sites),
       iteration = "list",
-      packages = c("tidyverse", "sf", "targets", "nhdplusTools"),
+      packages = c("tidyverse", "sf", "targets", "hydrogeofetch"),
     ),
     
     # Create the unique HUCs to map over, but drop those where a HUC4 was not
@@ -354,6 +407,65 @@ if (config::get(config = general_config)$compile_locations) {
       packages = c("data.table", "tidyverse")
     ),
     
+    # list all NHD Best Resolution HU4 GeoPackages available on The National 
+    # Map, with each file's last-modified date and ETag. This target is 
+    # intentionally not re-run on every pipeline run so that the source files 
+    # are fixed for a version of the site list. To use updated NHD files, run 
+    # `tar_invalidate(a_HUC4_manifest)`.
+    tar_target(
+      name = a_HUC4_manifest,
+      command = get_bestres_manifest(),
+      packages = c("tidyverse", "xml2")
+    ),
+    
+    # save the manifest alongside the site output
+    tar_target(
+      name = a_save_HUC4_manifest,
+      command = {
+        a_check_dir_structure
+        file_path <- paste0("a_compile_sites/out/siteSR_NHD_manifest_", 
+                            siteSR_config$collated_site_version, 
+                            ".csv")
+        write_csv(a_HUC4_manifest, file_path)
+        file_path
+      },
+      format = "file"
+    ),
+    
+    # download the NHD Best Resolution GeoPackage for each HUC4 that has sites.
+    # Doing this in its own (branched) target means that each file is downloaded
+    # once, before the waterbody and flowline branches that read it start, so
+    # parallel workers can't collide on a partially downloaded file.
+    tar_target(
+      name = a_HUC4_gpkg,
+      command = {
+        a_check_dir_structure
+        download_bestres_gpkg(huc4 = a_HUC4_list, 
+                              HUC4_manifest = a_HUC4_manifest)
+      },
+      pattern = map(a_HUC4_list),
+      packages = c("tidyverse", "curl")
+    ),
+    
+    # Regroup the sites by HUC4 with only the columns needed for NHD assignment.
+    # Each waterbody/flowline branch then loads only the sites in its own HUC4 
+    # instead of an entire source/site type group (up to ~700k sites), which 
+    # exhausted memory when branches ran in parallel.
+    tar_target(
+      name = a_sites_by_HUC4,
+      command = a_sites_add_HUC8 %>% 
+        bind_rows() %>% 
+        filter(!is.na(assigned_HUC)) %>% 
+        mutate(huc4 = str_sub(assigned_HUC, 1, 4)) %>% 
+        select(siteSR_id, org_id, loc_id, source, HUCEightDigitCode, 
+               harmonized_site_type, MonitoringLocationTypeName, site_tp_cd,
+               assigned_HUC, flag_HUC8, huc4) %>% 
+        group_by(huc4) %>% 
+        tar_group(),
+      iteration = "group",
+      packages = c("tidyverse", "sf", "targets")
+    ),
+    
     # Get the waterbodies associated with each lake/reservoir site by HUC4, 
     # leave these in a list for other branching functions - my hope is that only
     # changed branches will be re-run and not all of the data every time.
@@ -361,14 +473,16 @@ if (config::get(config = general_config)$compile_locations) {
       name = a_add_NHD_waterbody_info,
       command = {
         a_check_dir_structure
-        add_NHD_waterbody_to_sites(sites_with_huc = a_sites_add_HUC8,
-                                   huc4 = a_HUC4_list,
+        a_HUC4_gpkg # make sure the GeoPackages are downloaded first
+        add_NHD_waterbody_to_sites(sites_with_huc = a_sites_by_HUC4,
+                                   huc4 = unique(a_sites_by_HUC4$huc4),
                                    GEE_buffer = as.numeric(b_yml$site_buffer),
-                                   huc8_wbd = a_wbd_gdb)
+                                   HUC4_manifest = a_HUC4_manifest)
       },
-      pattern = cross(a_HUC4_list, a_sites_add_HUC8),
+      pattern = map(a_sites_by_HUC4),
       iteration = "list",
-      packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
+      resources = tar_resources(crew = tar_resources_crew(controller = "nhd")),
+      packages = c("tidyverse", "sf", "rmapshaper", "curl")
     ),
     
     # Calculate the closest flowline to each river/stream/res/lake/pond site by HUC4
@@ -376,14 +490,16 @@ if (config::get(config = general_config)$compile_locations) {
       name = a_add_NHD_flowline_info,
       command = {
         a_check_dir_structure
-        add_NHD_flowline_to_sites(sites_with_huc = a_sites_add_HUC8,
-                                  huc4 = a_HUC4_list,
+        a_HUC4_gpkg # make sure the GeoPackages are downloaded first
+        add_NHD_flowline_to_sites(sites_with_huc = a_sites_by_HUC4,
+                                  huc4 = unique(a_sites_by_HUC4$huc4),
                                   GEE_buffer = as.numeric(b_yml$site_buffer),
-                                  huc8_wbd = a_wbd_gdb)
+                                  HUC4_manifest = a_HUC4_manifest)
       },
-      pattern = cross(a_HUC4_list, a_sites_add_HUC8),
+      pattern = map(a_sites_by_HUC4),
       iteration = "list",
-      packages = c("tidyverse", "sf", "nhdplusTools", "rmapshaper")
+      resources = tar_resources(crew = tar_resources_crew(controller = "nhd")),
+      packages = c("tidyverse", "sf", "rmapshaper", "curl")
     ),
     
     # And add that waterbody and flowline info to the unique sites with HUC info
@@ -462,6 +578,8 @@ if (config::get(config = general_config)$compile_locations) {
                                                            flag_wb == 0 ~ 1,
                                                          dist_to_shore > (as.numeric(b_yml$site_buffer) + 100) &
                                                            flag_wb == 0 ~ 0))
+        # remove characters that cause issues in csv files from text fields
+        collated_sites <- clean_text_fields(collated_sites)
         # coerce NA -> "" when wb/fl assignment but no gnis/name
         collated_sites <- collated_sites %>% 
           mutate(across(.cols = c(wb_gnis_id, wb_gnis_name), 
@@ -472,6 +590,21 @@ if (config::get(config = general_config)$compile_locations) {
                   paste0("a_compile_sites/out/siteSR_collated_WQP_NWIS_sites_with_NHD_info_", siteSR_config$collated_site_version, ".csv"))
         collated_sites
       },
+    ),
+    
+    # remove the NHD Best Resolution GeoPackages now that all sites have been 
+    # attributed (the WBD HUC8 geodatabase is kept). If branches need to be 
+    # re-run later, the files are re-downloaded and checked against the manifest.
+    tar_target(
+      name = a_remove_NHD_gpkg,
+      command = {
+        a_sites_with_NHD_info
+        gpkgs <- list.files("a_compile_sites/nhd/", 
+                            pattern = "^NHD_H_.*_HU4_GPKG\\.(gpkg|zip|xml|jpg)$",
+                            full.names = TRUE)
+        unlink(gpkgs)
+        length(gpkgs)
+      }
     ),
     
     # save this target as an .RDS in Drive
