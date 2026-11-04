@@ -481,7 +481,8 @@ if (config::get(config = general_config)$compile_locations) {
       },
       pattern = map(a_sites_by_HUC4),
       iteration = "list",
-      resources = tar_resources(crew = tar_resources_crew(controller = "nhd")),
+      # memory-heavy and crashes crew workers, so run in the main process
+      deployment = "main",
       packages = c("tidyverse", "sf", "rmapshaper", "curl")
     ),
     
@@ -498,7 +499,8 @@ if (config::get(config = general_config)$compile_locations) {
       },
       pattern = map(a_sites_by_HUC4),
       iteration = "list",
-      resources = tar_resources(crew = tar_resources_crew(controller = "nhd")),
+      # memory-heavy and crashes crew workers, so run in the main process
+      deployment = "main",
       packages = c("tidyverse", "sf", "rmapshaper", "curl")
     ),
     
@@ -595,10 +597,17 @@ if (config::get(config = general_config)$compile_locations) {
     # remove the NHD Best Resolution GeoPackages now that all sites have been 
     # attributed (the WBD HUC8 geodatabase is kept). If branches need to be 
     # re-run later, the files are re-downloaded and checked against the manifest.
+    # When the siteSR acquisition is run (run_GEE), the geometries for the 
+    # site-grouping examples in the lakeSR bookdown are read from these files, 
+    # so they are not removed until those examples are made 
+    # (`c_crosswalk_examples`).
     tar_target(
       name = a_remove_NHD_gpkg,
       command = {
         a_sites_with_NHD_info
+        if (config::get(config = general_config)$run_GEE) {
+          c_crosswalk_examples
+        }
         gpkgs <- list.files("a_compile_sites/nhd/", 
                             pattern = "^NHD_H_.*_HU4_GPKG\\.(gpkg|zip|xml|jpg)$",
                             full.names = TRUE)

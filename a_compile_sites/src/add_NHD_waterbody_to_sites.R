@@ -43,11 +43,33 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer, HUC4_ma
     # from The National Map if not already present locally
     gpkg_path <- download_bestres_gpkg(huc4, HUC4_manifest)
     
-    # open the NHDWaterbody layer, coerce to a {sf} object
-    huc4_wbd <- st_read(gpkg_path, layer = "NHDWaterbody", quiet = TRUE) %>% 
-      # filter the waterbodies for ftypes of interest. 390 = lake/pond; 
-      # 436 = res, 493 = estuary
-      filter(ftype %in% c(390, 436, 493)) %>% 
+    # open the NHDWaterbody layer, coerce to a {sf} object. only read the
+    # waterbodies of interest (390 = lake/pond; 436 = res, 493 = estuary) that
+    # fall in a bounding box around the lake sites in this HUC4 (padded by ~0.02
+    # degrees, >> the 500 m assignment distance). this avoids loading and
+    # validating every waterbody in the HUC4, which can exhaust worker memory.
+    # the filter must be in the CRS of the layer.
+    wb_layer_crs <- st_layers(gpkg_path)$crs[[which(st_layers(gpkg_path)$name == "NHDWaterbody")]]
+    site_bbox <- st_bbox(st_transform(huc4_lake_points, 4326))
+    pad <- 0.02
+    site_bbox[c("xmin", "ymin")] <- site_bbox[c("xmin", "ymin")] - pad
+    site_bbox[c("xmax", "ymax")] <- site_bbox[c("xmax", "ymax")] + pad
+    bbox_wkt <- site_bbox %>%
+      st_as_sfc() %>%
+      st_transform(wb_layer_crs) %>%
+      st_as_text()
+    
+    wb_query <- "SELECT * FROM NHDWaterbody WHERE ftype IN (390, 436, 493)"
+    huc4_wbd <- st_read(gpkg_path, query = wb_query, wkt_filter = bbox_wkt,
+                        quiet = TRUE)
+    
+    # if no waterbodies fall in the bbox, fall back to the whole layer so that
+    # every site still gets a nearest waterbody
+    if (nrow(huc4_wbd) == 0) {
+      huc4_wbd <- st_read(gpkg_path, query = wb_query, quiet = TRUE)
+    }
+    
+    huc4_wbd <- huc4_wbd %>% 
       select(wb_nhd_id = permanent_identifier, 
              wb_gnis_id = gnis_id, 
              wb_gnis_name = gnis_name, 

@@ -17,7 +17,7 @@ default:
   compile_locations: FALSE
   
   # date of stored site collation version.
-  collated_site_version: "2025-06-04"
+  collated_site_version: "2026-10-29"
   
   # should the pekel visibility step be run? (requires GEE authentication and
   # update of the `gee_config.yml` file)
@@ -37,7 +37,7 @@ default:
   run_GEE: FALSE
   
   # date of stored pekel/gee version (if `run_pekel` and `run_GEE` set to false)
-  pekel_gee_version: "2025-06-06" 
+  pekel_gee_version: "2025-10-29" 
   
   # should the pipeline 'export' and 'share' siteSR files? 
   # FALSE (default) = files are collated locally, but not uploaded to Google Drive

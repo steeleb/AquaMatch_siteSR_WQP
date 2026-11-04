@@ -44,10 +44,35 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     # 420 = underground conduit, 334 = connector
     # filter in the query - some HUC4s have > 1 million flowlines, so reading 
     # only the needed rows is much faster
-    huc4_fl <- st_read(gpkg_path, 
-                       # (SELECT * since the geometry column name differs between files)
-                       query = "SELECT * FROM NHDFlowline WHERE ftype IN (336, 460, 558)",
-                       quiet = TRUE) %>% 
+    #
+    # further restrict the read to a bounding box around the sites in this HUC4
+    # (padded by ~0.02 degrees, >> the 500 m assignment distance), since the
+    # rest of the flowlines can't be the nearest or intersecting ones for sites
+    # in sparse HUC4s. the filter must be in the CRS of the layer.
+    fl_layer_crs <- st_layers(gpkg_path)$crs[[which(st_layers(gpkg_path)$name == "NHDFlowline")]]
+    site_bbox <- st_bbox(st_transform(sf_subset, 4326))
+    pad <- 0.02
+    site_bbox[c("xmin", "ymin")] <- site_bbox[c("xmin", "ymin")] - pad
+    site_bbox[c("xmax", "ymax")] <- site_bbox[c("xmax", "ymax")] + pad
+    bbox_wkt <- site_bbox %>%
+      st_as_sfc() %>%
+      st_transform(fl_layer_crs) %>%
+      st_as_text()
+
+    fl_query <- "SELECT * FROM NHDFlowline WHERE ftype IN (336, 460, 558)"
+    # (SELECT * since the geometry column name differs between files)
+    huc4_fl <- st_read(gpkg_path,
+                       query = fl_query,
+                       wkt_filter = bbox_wkt,
+                       quiet = TRUE)
+
+    # if no flowlines fall in the bbox (very sparse area), fall back to reading
+    # the whole layer so that every site still gets a nearest flowline
+    if (nrow(huc4_fl) == 0) {
+      huc4_fl <- st_read(gpkg_path, query = fl_query, quiet = TRUE)
+    }
+
+    huc4_fl <- huc4_fl %>%
       # drop Z/M dimensions, which aren't needed
       st_zm() %>% 
       select(fl_nhd_id = permanent_identifier, 
@@ -119,12 +144,12 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
     
     matched <- matched %>%
       mutate(dist_to_fl = distance_to_nearest_feature(., huc4_fl, nearest_idx),
-             # for river/stream sites: if the distance to the flowline is > 500m, 
+             # for river/stream/canal/ditch sites: if the distance to the flowline is > 500m, 
              # recode all the flowline info 
              # for lake/res sites: the distance can be retained, since the distance 
              # could be large for large waterbodies
              across(all_of(c("fl_nhd_id", "fl_gnis_id", "fl_gnis_name", "fl_stream_order", "fl_fcode")),
-                    ~ if_else(dist_to_fl > 500 & grepl("river|stream", harmonized_site_type, ignore.case = T),
+                    ~ if_else(dist_to_fl > 500 & grepl("river|stream|ditch|canal", harmonized_site_type, ignore.case = T),
                               NA,
                               .))) %>%
       select(-fl_id)
@@ -134,7 +159,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
       # 0 = point <= 100m from a flowline 
       # 1 = point between 100m and GEE buffer distance (200m) from a flowline (nhd_id info and distance info)
       # 2 = point between GEE buffer distance and 500m proximate to a flowline (nhd_id info and distance info)
-      # 3 = point unable to be assigned to a flowline for a stream site (no nhd_id, but
+      # 3 = point unable to be assigned to a flowline for a stream/canal/ditch site (no nhd_id, but
       #     distance info, dist > 500m)
       # 4 = point > 500m proximate to flowline, but a lake/res site
       # 5 = point does not have HUC8 assignment, so no flowline assigned (not assigned here)
