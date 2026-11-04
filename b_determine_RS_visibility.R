@@ -134,7 +134,9 @@ if (config::get(config = general_config)$run_pekel) {
                               locations = b_pekel_locs,
                               yaml = b_yml)
       },
-      pattern = map(b_WRS_pathrows)
+      pattern = map(b_WRS_pathrows),
+      # crew workers time out on this, so run in the main process
+      deployment = "main"
     ),
     
     # after pattern ran, make sure there is only one instance of each site, for

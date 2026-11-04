@@ -9,24 +9,26 @@ eeproj = yml["ee_proj"][0]
 #initialize GEE with proj
 ee.Initialize(project = eeproj)
 
-# get a list of the 20 most recently submitted tasks
-ts = list(ee.batch.Task.list())[0:20]
-# set the counter to zero
-n_active = 0
-# for each of the tasks, see if any read running or ready, if so, add one 
-# to the counter
-for task in ts:
-   if ("RUNNING" in str(task) or "READY" in str(task)):
-       n_active += 1
+# only track tasks created by this pipeline's pekel pull (see description in
+# run_pekel_per_pathrow.py), so other projects' tasks (e.g. lakeSR) don't block us
+task_prefix = "Pekel_Visibility_"
+
+def count_active_pekel_tasks():
+  # ee.batch.Task.list() returns all tasks for the project; filter by description
+  # and only count those that are still queued or running
+  n = 0
+  for task in ee.batch.Task.list():
+    desc = task.config.get("description", "")
+    if desc.startswith(task_prefix) and task.state in ("READY", "RUNNING"):
+      n += 1
+  return n
+
+n_active = count_active_pekel_tasks()
 # loop to track if n_active is greater than zero
 while (n_active > 0):
   # if it is, wait 2 minutes
   time.sleep(120)
   # and then repeat!
-  ts = list(ee.batch.Task.list())
-  n_active = 0
-  for task in ts:
-    if ("RUNNING" in str(task) or "READY" in str(task)):
-      n_active += 1
+  n_active = count_active_pekel_tasks()
 
-print('All tasks completed')
+print('All Pekel tasks completed')
