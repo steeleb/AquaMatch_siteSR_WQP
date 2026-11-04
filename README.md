@@ -24,7 +24,7 @@ This initial group of targets checks the configuration settings in config.yml an
 
 **a_compile_sites:**
 
-This {targets} group collates all sites in the US and Territories that are stored in WQP and NWIS, creating a list of locations for which to acquire remote sensing data. All locations are associated with a HUC8 if one is not listed in the metadata for the site from the WQP, then the unique HUC4s are used to associate points with waterbodies and flowlines of the NHDPlusV2 (CONUS) or NHD Best Resolution (non-CONUS HUCs) files. This step will take about one day to run, depending on the number of cores available for processing. If the general configuration setting `compile_locations` is set to FALSE, this step will acquire the previously-collated sites from Google Drive for the version date listed in the setting `collated_site_version` and processing time should be very quick.
+This {targets} group collates all sites in the US and Territories that are stored in WQP and NWIS, creating a list of locations for which to acquire remote sensing data. All locations are associated with a HUC8 if one is not listed in the metadata for the site from the WQP, then the unique HUC4s are used to associate points with waterbodies and flowlines of the NHD Best Resolution files (for all HUC4s). Text fields are cleaned in this group (`clean_text_fields()`), which removes the need for the post-hoc patch described above for new runs. Stream, river, canal and ditch sites more than 500 m from a flowline have their flowline information removed (`flag_fl` = 3). This step will take about one day to run, depending on the number of cores available for processing. If the general configuration setting `compile_locations` is set to FALSE, this step will acquire the previously-collated sites from Google Drive for the version date listed in the setting `collated_site_version` and processing time should be very quick.
 
 **b_determine_RS_visibility:**
 
@@ -32,13 +32,13 @@ The resulting list of in situ locations from `a_compile_sites` are used to asses
 
 **c_siteSR_stack:**
 
-This group of {targets} acquires Landsat Collection 2 SRST stacks for sites determined to be visible in the targets group `b_determine_RS_visibility` and the resulting acquisition files are collated in this step. This {targets} group takes about three days to run, if the configuration `run_GEE` is set to TRUE. If the configuration is set to FALSE, run time will be dependent on your internet connection (to access the previously-created files) and the number of cores available to run the workflow.
+This group of {targets} acquires Landsat Collection 2 SRST stacks for sites determined to be visible in the targets group `b_determine_RS_visibility` and the resulting acquisition files are collated in this step. This {targets} group takes about three days to run (note: this estimate will be updated for the de-duplicated workflow), if the configuration `run_GEE` is set to TRUE. If the configuration is set to FALSE, run time will be dependent on your internet connection (to access the previously-created files) and the number of cores available to run the workflow.
 
 To reduce redundant Earth Engine compute, RS-visible sites are grouped before acquisition (target `c_site_crosswalk`, function `cluster_sites_for_GEE()`), and only one site per group, the "extraction site", is sent to Earth Engine. Sites are grouped when the buffers of every pair of sites in the group overlap by at least `overlap_threshold` (75% in `admin_update`) of the buffer area and the sites are attributed to the same NHD waterbody (Lake/Reservoir and Pond sites) or the same NHD flowline (Stream and Ditch/Canal sites); Estuary and Other sites are grouped with sites of the same site type, and Lake/Pond or Stream/Canal sites without an NHD assignment are not grouped. The extraction site is an actual site in the group, so the acquired data are keyed to its `siteSR_id`. The file `siteSR_extraction_site_crosswalk_v[date].csv` maps every RS-visible `siteSR_id` to its `extraction_siteSR_id` and provides the shoreline and NHD assignment flags at the extraction site (`extraction_*`), which describe the area summarized in Earth Engine and apply to every site in the group. These steps are only run if `run_GEE` is TRUE.
 
-**d_siteSR_qa:**
+**d_qa_stack:**
 
-Collated Landsat data are filtered for quality based on broadly applicable thresholds. Export of QA'd SR data.
+Collated Landsat data are filtered for quality based on broadly applicable thresholds. QA'd SR data are exported by HUC2 for Landsat 5, 7 and 8 (single files for Landsat 4 and 9), along with feather files.
 
 ## Note
 

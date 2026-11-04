@@ -55,6 +55,14 @@ The bookdown that documents this workflow is in the
   summarized in GEE, so the extraction site's flags apply to every site in the
   group. Data files contain data only for extraction sites; join through the
   crosswalk to get data for all sites. Only created when `run_GEE` is TRUE.
+- **Site-grouping examples for the lakeSR bookdown** (new
+  `c_siteSR_stack/src/make_crosswalk_examples.R`; new targets
+  `c_crosswalk_examples`, `c_export_crosswalk_examples`, and
+  `c_crosswalk_examples_Drive_id`, only when `run_GEE` is TRUE). Selects example
+  groups by rule from `c_site_crosswalk` and collects the NHD geometries for
+  them, then exports the (small) result to Drive for the lakeSR workflow.
+  `a_remove_NHD_gpkg` now depends on `c_crosswalk_examples` when `run_GEE` is
+  TRUE, so the NHD GeoPackages are removed only after the examples are made.
 - `overlap_threshold` setting in the `config.yml` (percent; 75). If missing, 75 is used.
 - **NHD Best Resolution manifest and GeoPackage download**
   (`a_compile_sites/src/get_bestres_manifest.R`,
@@ -92,6 +100,13 @@ The bookdown that documents this workflow is in the
   package table in `03-Acquisition_Software_Settings.Rmd` and `references.bib`.
 
 ### Changed
+- **Ditch/Canal sites are treated like River/Stream sites for flowline
+  assignment** (`a_compile_sites/src/add_NHD_flowline_to_sites.R`): flowline
+  info is removed (`flag_fl` = 3) when the nearest flowline is > 500 m away.
+- `run_targets.Rmd` package installer now includes `RANN`, `googledrive`,
+  `data.table`, `dataRetrieval`, `curl`, `ggrepel`, `viridis`, and `stringi`.
+- README updated for NHD Best Resolution, `clean_text_fields()`, and the
+  `d_qa_stack` group.
 - **NHD waterbody and flowline assignment uses NHD Best Resolution for all
   HUC4s** (`a_compile_sites/src/add_NHD_waterbody_to_sites.R`,
   `add_NHD_flowline_to_sites.R`, `a_compile_sites.R`). Previously, NHDPlusV2 was

@@ -18,15 +18,6 @@ controller_cores <- crew_controller_local(
   seconds_idle = 12
 )
 
-# The NHD waterbody/flowline assignment targets read large NHD GeoPackages (up
-# to ~1 million flowlines per HUC4) and can use 5-20 GB each, so they run on a
-# controller with fewer workers to avoid exhausting memory and crashing workers.
-controller_nhd <- crew_controller_local(
-  name = "nhd",
-  workers = 3,
-  seconds_idle = 12
-)
-
 
 # Set target options: ---------------------------------------
 
@@ -36,7 +27,7 @@ tar_option_set(
   memory = "transient",
   garbage_collection = TRUE,
   # set up crew controller
-  controller = crew_controller_group(controller_cores, controller_nhd),
+  controller = controller_cores,
   resources = tar_resources(crew = tar_resources_crew(controller = "cores"))
 )
 
