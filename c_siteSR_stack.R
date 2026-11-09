@@ -54,6 +54,44 @@ if (config::get(config = general_config)$run_GEE) {
       packages = c("tidyverse", "sf", "RANN")
     ),
     
+    # spatial data for the site-grouping examples in the lakeSR bookdown. The 
+    # NHD geometries are read from the NHD Best Resolution geopackages, so this
+    # target must complete before they are removed (`a_remove_NHD_gpkg` depends 
+    # on it).
+    tar_target(
+      name = c_crosswalk_examples,
+      command = make_crosswalk_examples(crosswalk = c_site_crosswalk,
+                                        site_info = a_sites_with_NHD_info,
+                                        HUC4_manifest = a_HUC4_manifest,
+                                        buffer = as.numeric(b_yml$site_buffer)),
+      packages = c("tidyverse", "sf", "RANN", "tigris")
+    ),
+    
+    # export the examples for use in the lakeSR bookdown
+    tar_target(
+      name = c_export_crosswalk_examples,
+      command = {
+        export_single_target(target = c_crosswalk_examples,
+                             drive_path = check_targets_drive,
+                             google_email = b_yml$google_email,
+                             date_stamp = b_yml$run_date)
+      },
+      packages = c("tidyverse", "googledrive"),
+      deployment = "main"
+    ),
+    
+    tar_target(
+      name = c_crosswalk_examples_Drive_id,
+      command = {
+        get_file_ids(google_email = b_yml$google_email,
+                     drive_folder = check_targets_drive,
+                     file_path = "c_siteSR_stack/out/crosswalk_examples_drive_id.csv",
+                     depend = c_export_crosswalk_examples,
+                     filter_by = "c_crosswalk_examples")
+      },
+      packages = c("tidyverse", "googledrive")
+    ),
+    
     # the sites that are sent to EE: one site per group, with the same columns 
     # as b_visible_sites
     tar_target(
