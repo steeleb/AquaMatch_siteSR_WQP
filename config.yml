@@ -17,7 +17,7 @@ default:
   compile_locations: FALSE
   
   # date of stored site collation version.
-  collated_site_version: "2026-10-29"
+  collated_site_version: "2026-10-26"
   
   # should the pekel visibility step be run? (requires GEE authentication and
   # update of the `gee_config.yml` file)
