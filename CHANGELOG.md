@@ -100,6 +100,22 @@ The bookdown that documents this workflow is in the
   package table in `03-Acquisition_Software_Settings.Rmd` and `references.bib`.
 
 ### Changed
+- **`pCount_ir_glint` is dropped from the exported data**
+  (`d_qa_stack/src/sort_qa_Landsat_data.R`). It counts pixels where Nir, Swir1,
+  *and* Swir2 are all >= 0.1, which essentially never occurs in DSWE water, so it
+  is 0 in every record. It is still calculated in Earth Engine (so it remains in
+  `c_siteSR_stack/mid` and `d_qa_stack/qa`) but is not exported. The per-band
+  `pCount_nir_ir_glint`, `pCount_swir1_ir_glint`, and `pCount_swir2_ir_glint`
+  columns are retained. `pCount_ir_glint` values in previous releases are not
+  comparable and should not be used.
+- **The `pCount_*` mask diagnostic columns are retained in the exported data**
+  (`d_qa_stack/src/sort_qa_Landsat_data.R`). Columns ending in `val`, `glint`,
+  `thresh`, `zero`, `opac`, and `aero` were previously dropped from the HUC2
+  `.csv` files because they did not tally correctly (#39, #40); the tallies are
+  fixed (see Fixed), and the columns are sparsely populated by design (most
+  values are 0 or missing), so all are kept except `pCount_ir_glint` (below). `.csv` and `.feather` files in
+  `d_qa_stack/export` and `d_qa_stack/out` have more columns than in
+  v2025-06-06 and are larger.
 - **Ditch/Canal sites are treated like River/Stream sites for flowline
   assignment** (`a_compile_sites/src/add_NHD_flowline_to_sites.R`): flowline
   info is removed (`flag_fl` = 3) when the nearest flowline is > 500 m away.
@@ -144,6 +160,35 @@ The bookdown that documents this workflow is in the
   changes; the bookdown values will update once the siteSR data are re-run.
 
 ### Fixed
+- **Landsat 8/9 aerosol mask was inverted** (#47, #66;
+  `c_siteSR_stack/py/run_siteSR_per_pathrow.py`): `add_sr_aero_mask` returns 1
+  for climatology/low aerosol, but the Landsat 8/9 pull took `.eq(0)` of it, so
+  medium/high-aerosol pixels were *kept* and climatology/low-aerosol pixels were
+  masked. The pull now takes `.eq(1)`, so medium/high-aerosol pixels are masked
+  as documented. `pCount_high_aero` was inverted in the same way and now counts
+  medium/high-aerosol pixels. All Landsat 8/9 summaries in previous releases
+  (e.g. v2025-06-06) are affected; Landsat 4, 5, and 7 (atmospheric opacity
+  mask) are not. Comparing the 2025-06-06 and 2026-10-29 runs at the same
+  locations (DSWE1, scenes through 2024-12-30), Landsat 5/7 records are 98.5%
+  common to both runs with identical band values, while only ~30% of Landsat
+  8/9 site-scene records are common, mean `prop_clouds` falls from ~0.065 to
+  ~0.017, and the share of records with a negative median Aerosol band falls
+  from ~8.5% to ~0.9%. This is the same fix as in AquaMatch_lakeSR.
+- **`prop_hillShadow` was inverted** (`run_siteSR_per_pathrow.py`): it was the
+  mean of the `ee.Terrain.hillShadow` band (1 = illuminated), so it reported the
+  proportion of the buffer that was *illuminated*, not shaded as documented. The
+  band is now inverted before the reduction. Values in previous releases equal 1
+  minus the documented value. This is a diagnostic tally only; masking of
+  summarized pixels was not affected.
+- **`pCount_unreal_val` and `pCount_sun_glint` were always 0**
+  (`run_siteSR_per_pathrow.py`): they were tallied after the pixels they count
+  had already been masked, so were 0 in every record of the 2025-06-06 data.
+  The `pCount_*`
+  diagnostic tallies (`high_aero`/`high_opac`, `unreal_val`, `sun_glint`,
+  `ir_glint`, and the per-band `*_zero`, `*_thresh`, `*_glint`, and `*_ir_glint`
+  columns) are now restricted to the DSWE water area for each variant after the
+  hillshadow, cloud, and opacity/aerosol masks. Values are not comparable to
+  previous releases.
 - **UTM EPSG code was wrong for Alaska and Hawaii** in
   `c_siteSR_stack/src/check_if_fully_within_pr.R`: the code was built as
   `paste0("EPSG:326", zone)`, so UTM zones 1-9 were projected to

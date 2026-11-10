@@ -106,23 +106,6 @@ if (config::get(config = general_config)$run_GEE) {
       command = write_csv(c_extraction_sites, "c_siteSR_stack/run/visible_locs_with_WRS.csv")
     ),
     
-    # Check for GEE export subfolder, create if not present
-    tar_target(
-      name = c_check_siteSR_folder,
-      command = {
-        check_drive_parent_folder
-        tryCatch({
-          drive_auth(b_yml$google_email)
-          drive_ls(paste0("siteSR_v", b_yml$run_date))
-        }, error = function(e) {
-          # if the outpath doesn't exist, create it
-          drive_mkdir(name = paste0("siteSR_v", b_yml$run_date),
-                      path = b_yml$proj_parent_folder)
-        })
-      },
-      packages = "googledrive",
-      cue = tar_cue("always")
-    ),
     
     
     # make siteSR pull ----------------------------------------------
@@ -178,6 +161,21 @@ if (config::get(config = general_config)$run_GEE) {
       deployment = "main"
     ),
     
+    # EE exports to a folder at the root of My Drive (it can't export to a path),
+    # so move the folder into the project parent folder
+    tar_target(
+      name = c_move_siteSR_folder,
+      command = {
+        c_siteSR_tasks_complete
+        check_drive_parent_folder
+        move_gee_folder_to_parent(folder_name = paste0(b_yml$proj_folder, "_v", b_yml$run_date),
+                                  parent_folder = b_yml$proj_parent_folder,
+                                  google_email = b_yml$google_email)
+      },
+      packages = c("tidyverse", "googledrive"),
+      deployment = "main"
+    ),
+    
     # since we can't easily track if tasks have failed, and we send a lot of tasks
     # in this process, let's check for any failed tasks and add them to 
     # c_siteSR_stack/out/GEE_failed_tasks_vRUN_DATE.txt
@@ -206,12 +204,12 @@ if (config::get(config = general_config)$run_GEE) {
     tar_target(
       name = c_siteSR_contents,
       command = {
-        # make sure that siteSR tasks complete
-        c_siteSR_tasks_complete
+        # make sure that siteSR tasks complete and the folder has been moved
+        c_move_siteSR_folder
         # authorize Google
         drive_auth(email = b_yml$google_email)
         # create the folder path as proj_folder and run_date
-        drive_folder <- paste0(b_yml$proj_parent_folder, "siteSR_v", b_yml$run_date)
+        drive_folder <- paste0(b_yml$proj_parent_folder, b_yml$proj_folder, "_v", b_yml$run_date)
         # get a list of files in the project file
         drive_ls(path = drive_folder) %>% 
           select(name, id)

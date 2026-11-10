@@ -83,25 +83,6 @@ if (config::get(config = general_config)$run_pekel) {
       packages = c("tidyverse", "googledrive")
     ),
     
-    # Check for GEE export subfolder for pekel, create if not present
-    tar_target(
-      name = b_check_pekel_folder,
-      command = {
-        check_drive_parent_folder
-        tryCatch({
-          drive_auth(siteSR_config$google_email)
-          drive_ls(paste0("pekel_v", b_yml$run_date))
-        }, error = function(e) {
-          # if the outpath doesn't exist, create it
-          drive_mkdir(name = paste0("pekel_v", b_yml$run_date),
-                      path = siteSR_config$drive_project_folder)
-        })
-      },
-      packages = "googledrive",
-      cue = tar_cue("always")
-    ),
-    
-    
     # locations and pathrows --------------------------------------------------
     
     # load, format, save locations, depends on a_save_all_site_locs target
@@ -187,13 +168,28 @@ if (config::get(config = general_config)$run_pekel) {
       deployment = "main"
     ),
     
+    # EE exports to a folder at the root of My Drive (it can't export to a path),
+    # so move the folder into the project parent folder
+    tar_target(
+      name = b_move_pekel_folder,
+      command = {
+        b_pekel_tasks_complete
+        check_drive_parent_folder
+        move_gee_folder_to_parent(folder_name = paste0("pekel_v", b_yml$run_date),
+                                  parent_folder = b_yml$proj_parent_folder,
+                                  google_email = b_yml$google_email)
+      },
+      packages = c("tidyverse", "googledrive"),
+      deployment = "main"
+    ),
+    
     # download Pekel files
     
     tar_target(
       name = b_pekel_contents,
       command = {
-        # make sure that pekel tasks complete
-        b_pekel_tasks_complete
+        # make sure that pekel tasks complete and the folder has been moved
+        b_move_pekel_folder
         # authorize Google
         drive_auth(email = b_yml$google_email)
         # create the folder path as proj_folder and run_date

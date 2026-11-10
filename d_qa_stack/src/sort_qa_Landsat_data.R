@@ -3,7 +3,11 @@
 #' @description
 #' This function sorts large Landsat mission data sets (LS 5-8) into .csv data sets by
 #' HUC2 and smaller Landsat mission data sets (LS4/9) into a single .csv file per
-#' mission for data publication
+#' mission for data publication. All columns in the QA'd files are retained, 
+#' including the `pCount_*` mask diagnostic columns (e.g. `pCount_high_aero`, 
+#' `pCount_unreal_val`, `pCount_*_thresh`), which are sparsely populated by design.
+#' The exception is `pCount_ir_glint`, which is dropped (it is 0 in every record; 
+#' see the per-band `pCount_*_ir_glint` columns).
 #' 
 #' @param qa_files vector of file paths to the qa'd Landsat data files 
 #' to be processed. Assumed to be arrow::feather() files. 
@@ -46,17 +50,10 @@ sort_qa_Landsat_data <- function(qa_files,
                     dt <- read_feather(fp) 
                     # convert to DT by reference
                     setDT(dt)
-                    # drop some of the pCount columns that didn't count correctly in GEE
-                    # see issues #40 and #39
-                    cols_to_drop <- c(
-                      names(dt)[endsWith(names(dt), "val")],
-                      names(dt)[endsWith(names(dt), "glint")],
-                      names(dt)[endsWith(names(dt), "thresh")],
-                      names(dt)[endsWith(names(dt), "zero")],
-                      names(dt)[endsWith(names(dt), "opac")],
-                      names(dt)[endsWith(names(dt), "aero")]
-                    )
-                    dt[, (cols_to_drop) := NULL]
+                    # drop pCount_ir_glint: it requires Nir, Swir1, and Swir2 to all be
+                    # >= 0.1, so it is 0 in every record. The per-band *_ir_glint 
+                    # columns are retained.
+                    if ("pCount_ir_glint" %in% names(dt)) dt[, pCount_ir_glint := NULL]
                     # join with site info
                     dt <- merge(dt, site_info_lite, by = "siteSR_id", all.x = TRUE)
                     dt[, huc2 := str_sub(assigned_HUC, 1, 2)]
@@ -113,17 +110,11 @@ sort_qa_Landsat_data <- function(qa_files,
                     dt <- read_feather(fp) 
                     # convert to DT by reference
                     setDT(dt)
-                    # drop some of the pCount columns that didn't count correctly in GEE
-                    # see issues #40 and #39
-                    cols_to_drop <- c(
-                      names(dt)[endsWith(names(dt), "val")],
-                      names(dt)[endsWith(names(dt), "glint")],
-                      names(dt)[endsWith(names(dt), "thresh")],
-                      names(dt)[endsWith(names(dt), "zero")],
-                      names(dt)[endsWith(names(dt), "opac")],
-                      names(dt)[endsWith(names(dt), "aero")]
-                    )
-                    dt[, (cols_to_drop) := NULL]
+                    # drop pCount_ir_glint: it requires Nir, Swir1, and Swir2 to all be
+                    # >= 0.1, so it is 0 in every record. The per-band *_ir_glint 
+                    # columns are retained.
+                    if ("pCount_ir_glint" %in% names(dt)) dt[, pCount_ir_glint := NULL]
+                    dt
                   }) %>% 
         rbindlist()
       
