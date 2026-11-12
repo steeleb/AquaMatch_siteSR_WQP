@@ -76,8 +76,7 @@ add_NHD_waterbody_to_sites <- function(sites_with_huc, huc4, GEE_buffer, HUC4_ma
              wb_fcode = fcode, 
              wb_areasqkm = areasqkm) %>% 
       rowid_to_column("wbd_id") %>% 
-      mutate(wb_nhd_source = "NHDBestRes",
-             wb_nhd_id = as.character(wb_nhd_id))
+      mutate(wb_nhd_id = as.character(wb_nhd_id))
     
     # per usual, make sure geo is valid
     # try to make valid polygons 

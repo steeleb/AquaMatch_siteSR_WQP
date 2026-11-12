@@ -7,7 +7,7 @@ library(crew)
 
 # Set general configuration setting: -----------------------------
 
-general_config <- "default"
+general_config <- "admin_update"
 
 
 # Set up crew controller for multicore processing ------------------------
@@ -38,7 +38,8 @@ tar_option_set(
 tar_source(c("a_compile_sites.R",
              "b_determine_RS_visibility.R",
              "c_siteSR_stack.R",
-             "d_qa_stack.R"
+             "d_qa_stack.R",
+             "e_export_files.R"
 ))
 
 # and load the global functions
@@ -97,5 +98,6 @@ c(config_targets,
   a_compile_sites,
   b_determine_RS_visibility,
   c_siteSR_stack,
-  d_qa_stack
+  d_qa_stack,
+  e_export_files
 )

@@ -84,6 +84,11 @@ qa_and_document_LS <- function(mission_info,
     # store pcount column name via dswe designation
     pCount_column <- sym(paste0("pCount_", tolower(dswe)))
     
+    # decimal places for optical data, set by radiometric resolution: 3 for the 
+    # 8-bit TM/ETM+ sensors (Landsat 4, 5, 7), 4 for the 12-bit OLI (Landsat 8) 
+    # and 14-bit OLI-2 (Landsat 9) sensors
+    optical_digits <- if (mission_info$mission_id %in% c("LC08", "LC09")) 4 else 3
+    
     
     # map qa process across designated files ----------------------------------
     
@@ -125,6 +130,16 @@ qa_and_document_LS <- function(mission_info,
                       filter({{pCount_column}} >= min_no_pix)
                     valid_thresh <- nrow(data)
                     
+                    # round optical data to the precision of the sensor's radiometric 
+                    # resolution (see optical_digits). This is done before the 
+                    # nir/swir filter so that the filter acts on the values that are 
+                    # published, and users do not see values that break the rule 
+                    # because of rounding
+                    cols_to_round <- names(data) %>% 
+                      .[startsWith(., "med") | startsWith(., "mean") | startsWith(., "sd")] %>% 
+                      .[!grepl("SurfaceTemp", .)]
+                    data[, (cols_to_round) := round(.SD, optical_digits), .SDcols = cols_to_round]
+                    
                     # filter for nir/swir thresholds
                     data <- data %>% 
                       filter(med_Nir < ir_threshold | (med_Swir1 < ir_threshold & med_Swir2 < ir_threshold))
@@ -152,11 +167,7 @@ qa_and_document_LS <- function(mission_info,
                     # in-place update
                     data[(flag_temp_min == 2 | flag_temp_max == 2), (cols) := NA]
                     
-                    # round to sig digits for optical and thermal
-                    cols_to_round <- names(data) %>% 
-                      .[startsWith(., "med") | startsWith(., "mean") | startsWith(., "sd")] %>% 
-                      .[!grepl("SurfaceTemp", .)]
-                    data[,(cols_to_round) := round(.SD, 3), .SDcols = cols_to_round]
+                    # round thermal data to 2 decimals
                     thermal_cols <- names(data) %>% 
                       .[grepl("SurfaceTemp", .)]
                     data[,(thermal_cols) := round(.SD, 2), .SDcols = thermal_cols]

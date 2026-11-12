@@ -9,6 +9,14 @@
 #' The exception is `pCount_ir_glint`, which is dropped (it is 0 in every record; 
 #' see the per-band `pCount_*_ir_glint` columns).
 #' 
+#' The QA'd data are keyed to the site that was sent to EE (the extraction site). 
+#' Here the data are back-joined to every RS-visible site in the extraction site's 
+#' group using `crosswalk`, so each visible `siteSR_id` has its own rows. The 
+#' extraction site is retained in `extraction_siteSR_id`, and 
+#' `flag_grouped_extraction` is 1 when more than one site was in the group 
+#' (0 otherwise). Site-level descriptors (huc2, grouping details, extraction site 
+#' flags) are in the site information file, not in these data.
+#' 
 #' @param qa_files vector of file paths to the qa'd Landsat data files 
 #' to be processed. Assumed to be arrow::feather() files. 
 #' @param gee_identifier date string formatted yyyy-mm-dd used to version the 
@@ -16,6 +24,8 @@
 #' @param mission_info data.frame/tibble/data.table containing the columns 'mission_id'
 #' (e.g. 'LT05') and 'mission_names' (e.g. 'Landsat 5'). 
 #' @param site_info targets object containing the siteSR site info with NHD info
+#' @param crosswalk targets object `d_crosswalk`, containing the columns 
+#' `siteSR_id`, `extraction_siteSR_id`, and `n_sites_in_cluster`
 #' @param dswe character string indicating the DSWE setting to filter the files
 #' by.
 #' @param HUC2 character string indicating the HUC2 the data belong to
@@ -27,6 +37,7 @@ sort_qa_Landsat_data <- function(qa_files,
                                  gee_identifier,
                                  mission_info, 
                                  site_info,
+                                 crosswalk,
                                  dswe, 
                                  HUC2 = NULL) {
   
@@ -41,6 +52,28 @@ sort_qa_Landsat_data <- function(qa_files,
     # grab siteSR id and assigned huc for site joins
     site_info_lite <- site_info %>% select(siteSR_id, assigned_HUC) %>% 
       setDT()
+    # crosswalk of extraction site to all visible sites in its group
+    crosswalk_lite <- crosswalk %>% 
+      transmute(siteSR_id,
+                extraction_siteSR_id,
+                flag_grouped_extraction = as.integer(n_sites_in_cluster > 1)) %>% 
+      setDT()
+    
+    # back-join the data (keyed by extraction site) to all sites in the group
+    backjoin <- function(dt) {
+      n_extraction_sites <- uniqueN(dt$siteSR_id)
+      setnames(dt, "siteSR_id", "extraction_siteSR_id")
+      dt <- merge(dt, crosswalk_lite, by = "extraction_siteSR_id", 
+                  allow.cartesian = TRUE)
+      if (uniqueN(dt$extraction_siteSR_id) < n_extraction_sites) {
+        warning("Some extraction sites were not found in the crosswalk and were dropped.")
+      }
+      dt
+    }
+    
+    # leading columns of the output
+    lead_cols <- c("siteSR_id", "flag_grouped_extraction", "extraction_siteSR_id",
+                   "dswe_filter", "mission", "sat_id", "date")
     
     if (!is.null(HUC2)) {
       
@@ -54,7 +87,9 @@ sort_qa_Landsat_data <- function(qa_files,
                     # >= 0.1, so it is 0 in every record. The per-band *_ir_glint 
                     # columns are retained.
                     if ("pCount_ir_glint" %in% names(dt)) dt[, pCount_ir_glint := NULL]
-                    # join with site info
+                    # back-join to all visible sites
+                    dt <- backjoin(dt)
+                    # join with site info, huc2 is only used to split the files
                     dt <- merge(dt, site_info_lite, by = "siteSR_id", all.x = TRUE)
                     dt[, huc2 := str_sub(assigned_HUC, 1, 2)]
                     # filter for desired huc2
@@ -66,11 +101,9 @@ sort_qa_Landsat_data <- function(qa_files,
                   }) %>% 
         rbindlist() 
       
-      # and now pull those new columns to the front
-      new_cols <- c("siteSR_id", "dswe_filter", "mission", "sat_id", "date", "huc2")
-      setcolorder(data, c(new_cols, setdiff(names(data), new_cols)))
-      # drop assigned_HUC from site info file
-      data[, assigned_HUC := NULL]
+      # drop huc info (in the site information file), and pull id columns to the front
+      data[, c("assigned_HUC", "huc2") := NULL]
+      setcolorder(data, c(lead_cols, setdiff(names(data), lead_cols)))
       
       if (!is.na(HUC2)) {
         #make a file path name
@@ -118,15 +151,11 @@ sort_qa_Landsat_data <- function(qa_files,
                   }) %>% 
         rbindlist()
       
-      # add huc info
-      data <- merge(data, site_info_lite, by = "siteSR_id", all.x = TRUE)
+      # back-join to all visible sites
+      data <- backjoin(data)
       
-      # get HUC2, drop assigned huc
-      data[, huc2 := str_sub(assigned_HUC, 1, 2)]
-      data[, assigned_HUC := NULL]
-      
-      # and now pull those new columns to the front
-      setcolorder(data, c("siteSR_id", "dswe_filter", "mission", "sat_id", "date", "huc2"))
+      # and now pull id columns to the front
+      setcolorder(data, c(lead_cols, setdiff(names(data), lead_cols)))
       
       #make a file path name
       save_to_fpn <- file.path("d_qa_stack/export/",

@@ -38,7 +38,11 @@ To reduce redundant Earth Engine compute, RS-visible sites are grouped before ac
 
 **d_qa_stack:**
 
-Collated Landsat data are filtered for quality based on broadly applicable thresholds. QA'd SR data are exported by HUC2 for Landsat 5, 7 and 8 (single files for Landsat 4 and 9), along with feather files.
+Collated Landsat data are filtered for quality based on broadly applicable thresholds. QA'd SR data are exported by HUC2 for Landsat 5, 7 and 8 (single files for Landsat 4 and 9), along with feather files. Data are keyed to the extraction site, so they are back-joined to every RS-visible site in the group: `siteSR_id` is the visible site, `extraction_siteSR_id` is the site sent to Earth Engine, and `flag_grouped_extraction` is 1 when more than one site was in the group.
+
+**e_export_files:**
+
+If `update_and_share` is TRUE, the final files are written and uploaded to Drive: the QA'd data as feather files, the extraction site crosswalk, and a site information file (`siteSR_site_information_v[date].csv`) that includes a flag for RS visibility, the huc2 assignment, and the grouping and extraction site information.
 
 ## Note
 

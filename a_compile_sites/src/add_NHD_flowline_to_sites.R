@@ -80,8 +80,7 @@ add_NHD_flowline_to_sites <- function(sites_with_huc,
              fl_gnis_name = gnis_name, 
              fl_fcode = fcode) %>% 
       rowid_to_column("fl_id") %>% 
-      mutate(fl_nhd_source = "NHDBestRes",
-             fl_stream_order = NA, # add this column in for binding, no streamorder
+      mutate(fl_stream_order = NA, # add this column in for binding, no streamorder
              # in best res
              fl_nhd_id = as.character(fl_nhd_id))
     

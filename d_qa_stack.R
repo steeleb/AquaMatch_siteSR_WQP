@@ -8,7 +8,8 @@ tar_source(files = "d_qa_stack/src/")
 # Define {targets} workflow -----------------------------------------------
 
 # when the siteSR acquisition is run (run_GEE), only one site per group of 
-# overlapping sites is sent to EE, see c_site_crosswalk
+# overlapping sites is sent to EE, see c_site_crosswalk. Files are exported (and
+# shared on Drive) in group e, see e_export_files.R
 d_run_GEE <- config::get(config = general_config)$run_GEE
 
 # target objects in workflow
@@ -61,6 +62,21 @@ d_qa_stack <- list(
       .[grepl("metadata", .)]
   ),
   
+  # crosswalk of every RS-visible siteSR_id to the site that was sent to EE. If
+  # sites were not grouped (no run_GEE), each site is its own extraction site.
+  tar_target(
+    name = d_crosswalk,
+    command = {
+      if (d_run_GEE) {
+        c_site_crosswalk
+      } else {
+        tibble(siteSR_id = b_visible_sites$id,
+               extraction_siteSR_id = b_visible_sites$id,
+               n_sites_in_cluster = 1L)
+      }
+    }
+  ),
+  
   # qa the siteSR stacks like we do with lakeSR
   tar_target(
     name = d_qa_Landsat_files,
@@ -89,12 +105,13 @@ d_qa_stack <- list(
     }
   ),
   
-  # create a list of HUC2's to map over
+  # create a list of HUC2's to map over (all RS-visible sites, since the data 
+  # are back-joined to every visible site)
   tar_target(
     name = d_unique_huc2,
     command = {
       a_sites_with_NHD_info %>%
-        filter(siteSR_id %in% c_extraction_sites$id) %>%
+        filter(siteSR_id %in% d_crosswalk$siteSR_id) %>%
         distinct(huc2 = str_sub(assigned_HUC, 1, 2)) %>%
         pull(huc2)
     }
@@ -108,6 +125,7 @@ d_qa_stack <- list(
                                    mission_info = d_mission_identifiers %>% 
                                      filter(mission_names == "Landsat 4"),
                                    site_info = a_sites_with_NHD_info,
+                                   crosswalk = d_crosswalk,
                                    dswe = d_dswe_types),
     pattern = map(d_dswe_types),
     packages = c("data.table", "tidyverse", "arrow", "stringi")
@@ -121,6 +139,7 @@ d_qa_stack <- list(
                                    mission_info = d_mission_identifiers %>%
                                      filter(mission_names == "Landsat 5"),
                                    site_info = a_sites_with_NHD_info,
+                                   crosswalk = d_crosswalk,
                                    dswe = d_dswe_types,
                                    HUC2 = d_unique_huc2),
     pattern = cross(d_dswe_types, d_unique_huc2),
@@ -135,6 +154,7 @@ d_qa_stack <- list(
                                    mission_info = d_mission_identifiers %>%
                                      filter(mission_names == "Landsat 7"),
                                    site_info = a_sites_with_NHD_info,
+                                   crosswalk = d_crosswalk,
                                    dswe = d_dswe_types,
                                    HUC2 = d_unique_huc2),
     pattern = cross(d_dswe_types, d_unique_huc2),
@@ -149,6 +169,7 @@ d_qa_stack <- list(
                                    mission_info = d_mission_identifiers %>%
                                      filter(mission_names == "Landsat 8"),
                                    site_info = a_sites_with_NHD_info,
+                                   crosswalk = d_crosswalk,
                                    dswe = d_dswe_types,
                                    HUC2 = d_unique_huc2),
     pattern = cross(d_dswe_types, d_unique_huc2),
@@ -164,6 +185,7 @@ d_qa_stack <- list(
                                    mission_info = d_mission_identifiers %>% 
                                      filter(mission_names == "Landsat 9"),
                                    site_info = a_sites_with_NHD_info,
+                                   crosswalk = d_crosswalk,
                                    dswe = d_dswe_types),
     pattern = map(d_dswe_types),
     packages = c("data.table", "tidyverse", "arrow", "stringi")
@@ -178,202 +200,6 @@ d_qa_stack <- list(
                                           out_path = "d_qa_stack/export"),
     pattern = map(d_metadata_files),
     packages = c("data.table", "tidyverse", "arrow", "stringi")
-  ),
-  
-  # make a list of the collated and sorted files created
-  tar_files(
-    name = d_all_sorted_Landsat_files,
-    command = as.vector(c(d_Landsat4_collated_data, d_collated_Landsat5_by_huc2,
-                          d_collated_Landsat7_by_huc2, d_collated_Landsat8_by_huc2,
-                          d_Landsat9_collated_data, d_Landsat_metadata_formatted,
-                          # crosswalk of siteSR_id to extraction site (run_GEE only)
-                          if (d_run_GEE) d_site_crosswalk_file))
-  ),
-  
-  tar_target(
-    name = d_make_Landsat_feather_files,
-    command = {
-      # create version folder for output
-      if (!dir.exists(file.path("d_qa_stack/out/", b_yml$run_date))) {
-        dir.create(file.path("d_qa_stack/out/", b_yml$run_date))
-      }
-      
-      # filter for identifier/dswe
-      fns  <- d_all_sorted_Landsat_files[grepl(gsub(" ", "", d_mission_identifiers$mission_names),
-                                               d_all_sorted_Landsat_files)]
-      fns_dswe <- fns[grepl(paste0(d_dswe_types, "_"), fns)]
-      
-      # create the output filepath
-      out_fp <- paste0("d_qa_stack/out/", 
-                       b_yml$run_date, 
-                       "/siteSR_", 
-                       str_replace(d_mission_identifiers$mission_names," ", ""),
-                       "_", d_dswe_types, "_", 
-                       b_yml$run_date, ".feather")
-      
-      # check to see if this is a single file, or multiple and needs additional
-      # data handling
-      if (length(fns_dswe > 1)) {
-        # create a temp directory for the temporary Arrow dataset
-        temp_dataset_dir <- tempfile("arrow_ds_")
-        dir.create(temp_dataset_dir)
-        # these files need to be processed by chunk to deal with memory issues
-        walk(fns_dswe, function(fn) {
-          # read chunk
-          chunk <- fread(fn)
-          setDT(chunk)
-          
-          # add source_file column to partition by
-          chunk[, source_file := tools::file_path_sans_ext(basename(fn))]
-          
-          # write chunk using partitioning (otherwise we hit memory issues)
-          write_dataset(chunk,
-                        path = temp_dataset_dir,
-                        format = "feather",
-                        partitioning = "source_file",
-                        existing_data_behavior = "delete_matching")
-        })
-        
-        # connect to the arrow-partitioned file
-        ds <- open_dataset(temp_dataset_dir, format = "feather")
-        
-        # and grab all the data and write the feather file
-        ds %>% 
-          collect() %>% 
-          select(-source_file) %>% 
-          write_feather(., out_fp, compression = "lz4")
-        
-        # housekeeping
-        unlink(temp_dataset_dir, recursive = TRUE)
-        gc()
-        Sys.sleep(5)
-        
-      } else {
-        
-        data <- fread(fn)
-        write_feather(data, out_fp, compression = "lz4")
-        
-      }
-      
-      # return filepath
-      out_fp
-    },
-    pattern = cross(d_dswe_types, d_mission_identifiers),
-    packages = c("arrow", "data.table", "tidyverse"),
-    deployment = "main" # these are huge, so make sure this runs solo
   )
-  
+
 )
-
-# when sites were grouped before acquisition, the data are keyed to the site that
-# was sent to EE (`extraction_siteSR_id`). Save the crosswalk from every 
-# RS-visible siteSR_id to its extraction site, along with the flags at the 
-# extraction site, so that the data can be joined to all sites.
-if (d_run_GEE) {
-  
-  d_qa_stack <- list(
-    
-    d_qa_stack,
-    
-    tar_target(
-      name = d_site_crosswalk_file,
-      command = {
-        d_check_dir_structure
-        fp <- file.path("d_qa_stack/export/",
-                        paste0("siteSR_extraction_site_crosswalk_v", 
-                               b_yml$run_date, 
-                               ".csv"))
-        write_csv(c_site_crosswalk, fp)
-        fp
-      },
-      format = "file"
-    )
-    
-  )
-  
-}
-
-# if configuration is to update and share on Drive, add these targets to the d 
-# list
-if (config::get(config = general_config)$update_and_share) {
-  
-  d_qa_stack <- list(
-    
-    d_qa_stack,
-    
-    tar_target(
-      name = d_check_Drive_siteSR_folder,
-      command =  {
-        check_drive_parent_folder
-        tryCatch({
-          drive_auth(siteSR_config$google_email)
-          parent_folder <- siteSR_config$drive_project_folder
-          version_path <- paste0(siteSR_config$drive_project_folder, 
-                                 paste0("siteSR_qa_v", b_yml$run_date, "/"))
-          drive_ls(version_path)
-        }, error = function(e) {
-          # if there is an error, check both the 'collated_raw' folder and the 'version'
-          # folder
-          drive_mkdir(path = parent_folder, name = paste0("siteSR_qa_v", b_yml$run_date))
-        })
-        return(version_path)
-      },
-      packages = "googledrive",
-      cue = tar_cue("always")    
-    ),
-    
-    tar_target(
-      name = d_send_siteSR_files_to_drive,
-      command = export_single_file(file_path = d_all_sorted_Landsat_files,
-                                   drive_path = d_check_Drive_siteSR_folder,
-                                   google_email = siteSR_config$google_email),
-      packages = c("tidyverse", "googledrive"),
-      pattern = map(d_all_sorted_Landsat_files),
-      cue = tar_cue("always")
-    ),
-    
-    tar_target(
-      name = d_save_siteSR_drive_info,
-      command = {
-        drive_ids <- d_send_siteSR_files_to_drive %>% 
-          select(name, id) 
-        write_csv(drive_ids,
-                  paste0("d_qa_stack/out/siteSR_qa_files_drive_ids_v",
-                         b_yml$run_date,
-                         ".csv"))
-        drive_ids
-      },
-      packages = c("tidyverse", "googledrive"),
-      cue = tar_cue("always")
-    ), 
-    
-    tar_target(
-      name = d_send_feather_files_to_Drive,
-      command = export_single_file(file_path = d_make_Landsat_feather_files,
-                                   drive_path = d_check_Drive_siteSR_folder,
-                                   google_email = siteSR_config$google_email),
-      packages = c("tidyverse", "googledrive"),
-      pattern = map(d_make_Landsat_feather_files),
-      cue = tar_cue("always")
-    ),
-    
-    tar_target(
-      name = d_save_feather_drive_info,
-      command = {
-        d_check_dir_structure
-        drive_ids <- d_send_feather_files_to_Drive %>% 
-          select(name, id)
-        write_csv(drive_ids,
-                  paste0("d_qa_stack/out/siteSR_Landsat_QA_feather_files_drive_ids_v",
-                         b_yml$run_date,
-                         ".csv"))
-        drive_ids
-      },
-      packages = c("tidyverse", "googledrive"),
-      cue = tar_cue("always")
-    )
-    
-  )
-  
-}
-
